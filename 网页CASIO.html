@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>网页CASIO</title>
+    <title>LaTeX 专业绘图计算器 Pro</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css">
@@ -17,7 +17,7 @@
             --screen-bg: #fdfdfd;
             --btn-primary: #4a90e2;
             --btn-danger: #f56c6c;
-            --text-main: #2c3e50;
+            --text-main: #1a1a1a;
             --color-fx: #0984e3;
             --color-gx: #e17055;
             --math-font: 'Computer Modern Serif', serif;
@@ -29,81 +29,81 @@
             min-height: 100vh; margin: 0; font-family: var(--math-font);
         }
 
+        /* 比例调整为 12:7 (高度/宽度 ≈ 1.71) */
         .calculator {
-            background-color: var(--calc-bg); width: 440px; height: 920px;
+            background-color: var(--calc-bg);
+            width: 440px;
+            height: 754px; /* 12:7 比例 */
             border-radius: 30px; box-shadow: 0 40px 80px rgba(0,0,0,0.15);
-            padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;
+            padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+            border: 1px solid #d1d9e0;
         }
 
-        /* 顶部导航 */
+        /* 导航栏 */
         .top-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
         .nav-btn {
             border: 1px solid #e0e6ed; background-color: #f8fafc;
-            color: var(--text-main); border-radius: 12px; height: 44px;
-            font-size: 16px; font-family: var(--math-font); font-weight: 800;
+            color: var(--text-main); border-radius: 10px; height: 38px;
+            font-size: 14px; font-family: var(--math-font); font-weight: 800;
             cursor: pointer; transition: 0.2s;
         }
         .nav-btn.active { background-color: var(--btn-primary); color: white; border-color: var(--btn-primary); }
 
         /* 屏幕显示 */
         .screen {
-            background-color: var(--screen-bg); border-radius: 18px;
-            border: 1px solid #dcdfe6; padding: 18px; display: flex; flex-direction: column;
-            justify-content: center; min-height: 140px;
+            background-color: var(--screen-bg); border-radius: 16px;
+            border: 1px solid #dcdfe6; padding: 14px; display: flex; flex-direction: column;
+            justify-content: center; min-height: 110px;
         }
 
-        /* 双行 LaTeX 容器 */
-        .plot-info-area { display: none; flex-direction: column; gap: 10px; overflow: hidden; }
+        .plot-info-area { display: none; flex-direction: column; gap: 6px; overflow: hidden; }
         .latex-line {
             width: 100%; overflow-x: auto; white-space: nowrap;
-            font-size: 20px; padding-bottom: 4px; border-bottom: 1px solid #f0f0f0;
+            font-size: 19px; padding-bottom: 2px; border-bottom: 1px solid #f3f3f3;
         }
-        /* 自定义滚动条 */
-        .latex-line::-webkit-scrollbar { height: 3px; }
-        .latex-line::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
 
-        /* 键盘区按钮优化 */
-        .keyboard { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        /* 键盘按钮优化 */
+        .keyboard { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
         button {
-            border: 1px solid #eaedf0; border-radius: 14px; background-color: #fff;
+            border: 1px solid #eaedf0; border-radius: 12px; background-color: #fff;
             cursor: pointer; transition: all 0.1s; font-family: var(--math-font);
-            font-size: 22px; font-weight: 700; color: #1a1a1a;
+            font-size: 21px; font-weight: 800; color: var(--text-main);
         }
-        button:active { transform: scale(0.92); background-color: #f0f0f0; }
+        button:active { transform: scale(0.94); background-color: #f5f5f5; }
 
-        /* f(x) g(x) 按钮加粗及斜体优化 */
-        .btn-func {
-            color: var(--btn-primary); font-style: italic; font-weight: 800; font-size: 24px;
-        }
-        .btn-calc { background-color: var(--btn-primary); color: white; font-size: 28px; border: none; }
+        .btn-func { color: var(--btn-primary); font-style: italic; font-size: 23px; }
+        .btn-calc { background-color: var(--btn-primary); color: white; font-size: 26px; border: none; }
         .btn-danger { background-color: var(--btn-danger); color: white; border: none; }
 
-        /* 绘图容器 */
-        .graph-area { flex: 1; display: none; flex-direction: column; gap: 12px; min-height: 0; }
-        .canvas-container { flex: 1; background: white; border: 1px solid #dcdfe6; border-radius: 16px; position: relative; cursor: move; overflow: hidden; touch-action: none;}
+        /* 绘图区 */
+        .graph-area { flex: 1; display: none; flex-direction: column; gap: 10px; min-height: 0; }
+        .canvas-container { flex: 1; background: white; border: 1px solid #dcdfe6; border-radius: 14px; position: relative; cursor: crosshair; overflow: hidden; touch-action: none;}
         canvas { width: 100%; height: 100%; position: absolute; }
 
-        /* 四宫格边界控制面板 */
+        /* 四宫格定量调节面板 */
         .boundary-grid {
             display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-            gap: 8px; background: #f1f3f4; padding: 12px; border-radius: 16px;
+            gap: 8px; background: #f1f3f4; padding: 10px; border-radius: 14px;
         }
         .boundary-item {
-            display: flex; align-items: center; justify-content: space-between;
-            background: white; padding: 6px 12px; border-radius: 8px; border: 1px solid #e0e6ed;
+            display: flex; align-items: center;
+            background: white; padding: 4px 10px; border-radius: 8px; border: 1px solid #e0e6ed;
         }
-        .boundary-item span { font-size: 13px; font-weight: 800; color: #666; width: 45px; }
+        .boundary-item span { font-size: 12px; font-weight: 800; color: #555; width: 45px; }
         .boundary-item input {
             width: 100%; border: none; outline: none; text-align: right;
-            font-family: var(--math-font); font-size: 16px; font-weight: 700;
+            font-family: var(--math-font); font-size: 15px; font-weight: 700;
+            background: transparent;
         }
+        /* 启用原生数值箭头 */
+        input[type=number]::-webkit-inner-spin-button { opacity: 1; cursor: pointer; }
 
-        /* 求根结果显示 */
+        /* 求根列表 */
         .root-results {
-            flex: 1; overflow-y: auto; background: white; border-radius: 16px;
-            padding: 15px; border: 1px solid #ddd;
+            flex: 1; overflow-y: auto; background: white; border-radius: 14px;
+            padding: 12px; border: 1px solid #ddd;
         }
-        .root-katex-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 20px; }
+        .root-katex-item { padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 19px; }
     </style>
 </head>
 <body>
@@ -118,34 +118,34 @@
     </div>
 
     <div class="screen" id="main-screen">
-        <div id="single-line-display" style="font-size: 24px; width: 100%; overflow-x: auto;"></div>
+        <div id="single-line-display" style="font-size: 22px; width: 100%; overflow-x: auto;"></div>
         <div class="plot-info-area" id="double-line-display">
             <div class="latex-line" id="line-fx"></div>
             <div class="latex-line" id="line-gx"></div>
         </div>
-        <div id="calc-res-val" style="text-align: right; font-weight: 800; font-size: 24px; margin-top: 10px;">0</div>
+        <div id="calc-res-val" style="text-align: right; font-weight: 800; font-size: 22px; margin-top: 8px;">0</div>
     </div>
 
-    <div style="display:none; flex-direction:column; gap:10px;" id="roots-panel">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+    <div style="display:none; flex-direction:column; gap:10px; flex:1;" id="roots-panel">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <button class="nav-btn active" id="root-target-f" onclick="setRootTarget('f')">针对 f(x)</button>
             <button class="nav-btn" id="root-target-g" onclick="setRootTarget('g')">针对 g(x)</button>
         </div>
         <div class="boundary-grid" style="grid-template-rows: 1fr;">
-            <div class="boundary-item"><span>Start</span><input type="number" id="rootX1" value="-10"></div>
-            <div class="boundary-item"><span>End</span><input type="number" id="rootX2" value="10"></div>
+            <div class="boundary-item"><span>Start</span><input type="number" id="rootX1" value="-10" step="1"></div>
+            <div class="boundary-item"><span>End</span><input type="number" id="rootX2" value="10" step="1"></div>
         </div>
-        <button class="btn-calc" style="font-size: 20px; padding: 10px;" onclick="calculateRoots()">执行求根</button>
+        <button class="btn-calc" style="font-size: 18px; padding: 10px;" onclick="calculateRoots()">执行求根</button>
         <div class="root-results" id="root-list"></div>
     </div>
 
     <div class="graph-area" id="graph-area">
         <div class="canvas-container" id="canvas-wrap"><canvas id="plotCanvas"></canvas></div>
         <div class="boundary-grid">
-            <div class="boundary-item"><span>X Min</span><input type="number" id="xMin" value="-10" step="any" onchange="syncFromInput()"></div>
-            <div class="boundary-item"><span>X Max</span><input type="number" id="xMax" value="10" step="any" onchange="syncFromInput()"></div>
-            <div class="boundary-item"><span>Y Min</span><input type="number" id="yMin" value="-6" step="any" onchange="syncFromInput()"></div>
-            <div class="boundary-item"><span>Y Max</span><input type="number" id="yMax" value="6" step="any" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>X Min</span><input type="number" id="xMin" value="-10" step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>X Max</span><input type="number" id="xMax" value="10" step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>Y Min</span><input type="number" id="yMin" value="-6" step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>Y Max</span><input type="number" id="yMax" value="6" step="1" onchange="syncFromInput()"></div>
         </div>
     </div>
 
@@ -179,29 +179,24 @@
         state.expr[state.mode] = currentExpression;
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('nav-' + m).classList.add('active');
-
         state.mode = m;
         currentExpression = state.expr[m] || "";
 
-        // UI 逻辑
         const isPlot = (m === 'plot');
         const isRoot = (m === 'roots');
 
+        document.getElementById('main-screen').style.display = isRoot ? 'none' : 'flex';
         document.getElementById('keyboard-area').style.display = (isPlot || isRoot) ? 'none' : 'grid';
         document.getElementById('graph-area').style.display = isPlot ? 'flex' : 'none';
         document.getElementById('roots-panel').style.display = isRoot ? 'flex' : 'none';
 
-        // 屏幕切换
         if (isPlot) {
             singleDisplay.style.display = 'none';
             doubleDisplay.style.display = 'flex';
             resVal.style.display = 'none';
             updatePlotScreen();
             setTimeout(() => { initCanvas(); drawGraph(); }, 50);
-        } else if (isRoot) {
-            document.getElementById('main-screen').style.display = 'none';
-        } else {
-            document.getElementById('main-screen').style.display = 'flex';
+        } else if (!isRoot) {
             singleDisplay.style.display = 'block';
             doubleDisplay.style.display = 'none';
             resVal.style.display = 'block';
@@ -226,16 +221,13 @@
         document.getElementById('root-target-g').classList.toggle('active', t === 'g');
     }
 
-    // --- 求根：带编号及 LaTeX ---
     function calculateRoots() {
         const x1 = parseFloat(document.getElementById('rootX1').value);
         const x2 = parseFloat(document.getElementById('rootX2').value);
         const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
         const listEl = document.getElementById('root-list');
         listEl.innerHTML = "";
-
         if (!exp) { listEl.innerText = "函数未定义"; return; }
-
         try {
             const scope = getCombinedScope();
             const compiled = math.compile(exp);
@@ -243,7 +235,6 @@
             let roots = [];
             const steps = 400;
             const delta = (x2 - x1) / steps;
-
             for (let i = 0; i < steps; i++) {
                 let a = x1 + i * delta, b = a + delta;
                 if (f(a) * f(b) <= 0) {
@@ -252,7 +243,6 @@
                 }
             }
             roots = [...new Set(roots)].sort((a,b) => a-b);
-
             roots.forEach((r, idx) => {
                 const div = document.createElement('div');
                 div.className = "root-katex-item";
@@ -271,7 +261,6 @@
         return (a + b) / 2;
     }
 
-    // --- 绘图引擎核心 ---
     function initCanvas() {
         const wrap = document.getElementById('canvas-wrap');
         const dpr = window.devicePixelRatio || 1;
@@ -285,13 +274,12 @@
         const mX = (x) => ((x - config.xMin) / (config.xMax - config.xMin)) * w;
         const mY = (y) => h - ((y - config.yMin) / (config.yMax - config.yMin)) * h;
 
-        // 坐标轴
         ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1; ctx.beginPath();
         for(let x=Math.floor(config.xMin); x<=config.xMax; x++) { ctx.moveTo(mX(x),0); ctx.lineTo(mX(x),h); }
         for(let y=Math.floor(config.yMin); y<=config.yMax; y++) { ctx.moveTo(0,mY(y)); ctx.lineTo(w,mY(y)); }
         ctx.stroke();
 
-        ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1.5; ctx.beginPath();
         ctx.moveTo(0, mY(0)); ctx.lineTo(w, mY(0)); ctx.moveTo(mX(0), 0); ctx.lineTo(mX(0), h);
         ctx.stroke();
 
@@ -300,7 +288,7 @@
             if (!state.expr[key]) return;
             try {
                 const compiled = math.compile(state.expr[key]);
-                ctx.beginPath(); ctx.strokeStyle = (key==='fx'?'#0984e3':'#e17055'); ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.strokeStyle = (key==='fx'?'#0984e3':'#e17055'); ctx.lineWidth = 2.5;
                 let first = true;
                 for (let i = 0; i <= w; i += 2) {
                     let x = config.xMin + (i/w)*(config.xMax-config.xMin);
@@ -315,7 +303,6 @@
         });
     }
 
-    // 交互修复
     canvas.onmousedown = (e) => { isDragging = true; lastMousePos = { x: e.clientX, y: e.clientY }; };
     window.onmouseup = () => isDragging = false;
     canvas.onmousemove = (e) => {
@@ -339,10 +326,10 @@
     };
 
     function syncToUI() {
-        document.getElementById('xMin').value = config.xMin.toFixed(2);
-        document.getElementById('xMax').value = config.xMax.toFixed(2);
-        document.getElementById('yMin').value = config.yMin.toFixed(2);
-        document.getElementById('yMax').value = config.yMax.toFixed(2);
+        document.getElementById('xMin').value = Math.round(config.xMin);
+        document.getElementById('xMax').value = Math.round(config.xMax);
+        document.getElementById('yMin').value = Math.round(config.yMin);
+        document.getElementById('yMax').value = Math.round(config.yMax);
     }
     function syncFromInput() {
         config.xMin = parseFloat(document.getElementById('xMin').value);
@@ -352,7 +339,6 @@
         drawGraph();
     }
 
-    // --- 核心工具 ---
     function getCombinedScope() {
         let s = {};
         try {
