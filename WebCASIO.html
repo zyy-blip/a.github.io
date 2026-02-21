@@ -665,37 +665,7 @@ function setRootTarget(t) {
     document.getElementById('root-target-g').classList.toggle('active', t==='g');
 }
 
-function bisection(f, a, b) {
-    for (let i=0;i<40;i++){const m=(a+b)/2;if(f(a)*f(m)<=0)b=m;else a=m;}
-    return (a+b)/2;
-}
 
-function calculateRoots() {
-    const x1=parseFloat(document.getElementById('rootX1').value);
-    const x2=parseFloat(document.getElementById('rootX2').value);
-    const exp=state.expr[state.rootTarget==='f'?'fx':'gx'];
-    const listEl=document.getElementById('root-list');
-    listEl.innerHTML='';
-    if (!exp){listEl.innerText='函数未定义';return;}
-    try {
-        const scope=getCombinedScope();
-        const compiled=math.compile(exp);
-        const fn=v=>compiled.evaluate({x:v,...scope});
-        const steps=400,delta=(x2-x1)/steps;
-        let roots=[];
-        for(let i=0;i<steps;i++){
-            const a=x1+i*delta,b=a+delta;
-            if(fn(a)*fn(b)<=0)roots.push(bisection(fn,a,b).toFixed(6));
-        }
-        roots=[...new Set(roots)].sort((a,b)=>a-b);
-        roots.forEach((r,idx)=>{
-            const div=document.createElement('div');
-            div.className='root-katex-item';listEl.appendChild(div);
-            katex.render(`x_{${idx+1}} = ${r}`,div);
-        });
-        if(!roots.length)listEl.innerText='未发现实根';
-    }catch(e){listEl.innerText='计算出错';}
-}
 
 // ══════════════════════════════════════════════════════════════
 //  Canvas 初始化 & 坐标映射
@@ -719,7 +689,177 @@ function makeMappers() {
         invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin),
     };
 }
+function bisection(f, a, b) {
+    // 增加对端点为零的直接判断
+    if (Math.abs(f(a)) < 1e-12) return a;
+    if (Math.abs(f(b)) < 1e-12) return b;
+    
+    for (let i = 0; i < 60; i++) {  // 增加迭代次数提高精度
+        const m = (a + b) / 2;
+        if (Math.abs(f(m)) < 1e-12) return m;  // 直接检查中点
+        if (f(a) * f(m) <= 0) b = m;
+        else a = m;
+    }
+    return (a + b) / 2;
+}
 
+function calculateRoots() {
+    const x1 = parseFloat(document.getElementById('rootX1').value);
+    const x2 = parseFloat(document.getElementById('rootX2').value);
+    const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
+    const listEl = document.getElementById('root-list');
+    listEl.innerHTML = '';
+    
+    if (!exp) { listEl.innerText = '函数未定义'; return; }
+    
+    try {
+        const scope = getCombinedScope();
+        const compiled = math.compile(exp);
+        const fn = v => compiled.evaluate({ x: v, ...scope });
+        
+        const steps = 800;  // 增加扫描密度
+        const delta = (x2 - x1) / steps;
+        let roots = [];
+        let signChanges = [];
+        
+        // 第一步：收集所有可能的根区间
+        for (let i = 0; i <= steps; i++) {
+            const x = x1 + i * delta;
+            const fx = fn(x);
+            
+            // 检测函数值接近零的点
+            if (Math.abs(fx) < 1e-8) {
+                roots.push(x.toFixed(6));
+            }
+            
+            // 检测符号变化
+            if (i > 0) {
+                const prevX = x1 + (i - 1) * delta;
+                const prevFx = fn(prevX);
+                
+                // 如果符号变化或函数值穿过零点
+                if (prevFx * fx <= 0) {
+                    // 使用更精细的搜索
+                    const refinedRoots = refinedSearch(fn, prevX, x);
+                    roots.push(...refinedRoots);
+                }
+            }
+        }
+        
+        // 第二步：使用导数辅助检测极值点附近的根
+        if (roots.length === 0) {
+            roots = findRootsWithDerivative(fn, x1, x2, steps);
+        }
+        
+        // 第三步：去重和排序
+        roots = [...new Set(roots.map(Number))]
+            .filter(r => !isNaN(r) && Math.abs(fn(r)) < 1e-6)  // 验证确实是根
+            .sort((a, b) => a - b)
+            .map(r => r.toFixed(6));
+        
+        // 显示结果
+        if (roots.length === 0) {
+            listEl.innerText = '未发现实根';
+        } else {
+            roots.forEach((r, idx) => {
+                const div = document.createElement('div');
+                div.className = 'root-katex-item';
+                listEl.appendChild(div);
+                katex.render(`x_{${idx + 1}} = ${r}`, div);
+            });
+        }
+    } catch (e) {
+        listEl.innerText = '计算出错: ' + e.message;
+    }
+}
+
+// 新增：在区间内进行更精细的搜索
+function refinedSearch(f, a, b, depth = 4) {
+    const roots = [];
+    const stack = [{ a, b, depth }];
+    
+    while (stack.length > 0) {
+        const { a, b, depth } = stack.pop();
+        
+        const fa = f(a);
+        const fb = f(b);
+        
+        // 直接找到根
+        if (Math.abs(fa) < 1e-12) {
+            roots.push(a);
+            continue;
+        }
+        if (Math.abs(fb) < 1e-12) {
+            roots.push(b);
+            continue;
+        }
+        
+        // 如果符号相同且不是接近零，尝试在区间内采样
+        if (fa * fb > 0 && Math.abs(fa) > 1e-8 && Math.abs(fb) > 1e-8) {
+            // 在区间内等间距采样5个点
+            for (let i = 1; i < 5; i++) {
+                const x = a + (b - a) * i / 5;
+                const fx = f(x);
+                if (Math.abs(fx) < 1e-8) {
+                    roots.push(x);
+                }
+            }
+            continue;
+        }
+        
+        // 使用二分法
+        const root = bisection(f, a, b);
+        if (Math.abs(f(root)) < 1e-6) {
+            roots.push(root);
+        }
+        
+        // 如果深度允许，继续在左右子区间搜索
+        if (depth > 0 && Math.abs(b - a) > 1e-6) {
+            const mid = (a + b) / 2;
+            if (fa * f(mid) <= 0) {
+                stack.push({ a, b: mid, depth: depth - 1 });
+            }
+            if (f(mid) * fb <= 0) {
+                stack.push({ a: mid, b, depth: depth - 1 });
+            }
+        }
+    }
+    
+    return [...new Set(roots.map(r => Number(r.toFixed(6))))];
+}
+
+// 新增：使用导数信息辅助找根
+function findRootsWithDerivative(f, a, b, steps = 200) {
+    const roots = [];
+    const delta = (b - a) / steps;
+    
+    // 近似计算导数
+    for (let i = 0; i <= steps; i++) {
+        const x = a + i * delta;
+        
+        // 中心差分法计算导数
+        const h = 1e-6;
+        const derivative = (f(x + h) - f(x - h)) / (2 * h);
+        
+        // 如果导数接近零，可能是极值点或拐点
+        if (Math.abs(derivative) < 1e-4) {
+            // 检查该点是否为根
+            if (Math.abs(f(x)) < 1e-6) {
+                roots.push(x);
+            } else {
+                // 在极值点附近搜索
+                const left = Math.max(a, x - delta);
+                const right = Math.min(b, x + delta);
+                const refined = refinedSearch(f, left, right, 3);
+                roots.push(...refined);
+            }
+        }
+    }
+    
+    return roots;
+}
+
+    
 // ══════════════════════════════════════════════════════════════
 //  绘图
 // ══════════════════════════════════════════════════════════════
