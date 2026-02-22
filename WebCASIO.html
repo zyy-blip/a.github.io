@@ -682,16 +682,123 @@ function makeMappers() {
     };
 }
 
-function bisection(f, a, b) {
-    if (Math.abs(f(a)) < 1e-12) return a;
-    if (Math.abs(f(b)) < 1e-12) return b;
-    for (let i = 0; i < 60; i++) {
-        const m = (a + b) / 2;
-        if (Math.abs(f(m)) < 1e-12) return m;
-        if (f(a) * f(m) <= 0) b = m;
-        else a = m;
+// ══════════════════════════════════════════════════════════════
+//  健壮求根引擎 v2
+//  · safeFn  ——  过滤复数/NaN，仅接受实有限值
+//  · brent   ——  Brent 法精化有符号变向区间，精度 1e-12
+//  · goldenMin / touchRoots —— 金分搜索 |f| 极小值，捕获切根
+//  · 主扫描 2000 段 + 细分 + 聚类去重
+// ══════════════════════════════════════════════════════════════
+
+// 安全求值：复数（虚部>1e-10）→ NaN，保障 x^x 不产生假根
+function safeFnWrap(rawFn) {
+    return function(x) {
+        try {
+            const v = rawFn(x);
+            if (typeof v === 'number') return isFinite(v) ? v : NaN;
+            // mathjs Complex 对象
+            if (v !== null && typeof v === 'object' && 're' in v) {
+                return Math.abs(v.im) < 1e-10 ? v.re : NaN;
+            }
+            return NaN;
+        } catch(e) { return NaN; }
+    };
+}
+
+// Brent 法：在 f(a)·f(b)≤0 的区间内求根，超线性收敛
+function brent(f, a, b, tol) {
+    tol = tol || 1e-12;
+    let fa = f(a), fb = f(b);
+    if (!isFinite(fa) || !isFinite(fb)) return null;
+    if (fa * fb > 0) return null;
+    if (Math.abs(fa) < tol) return a;
+    if (Math.abs(fb) < tol) return b;
+
+    let c = a, fc = fa, d = b - a, e = d;
+    const EPS = 2.22e-16;
+
+    for (let iter = 0; iter < 120; iter++) {
+        if (fb * fc > 0) { c = a; fc = fa; d = e = b - a; }
+        if (Math.abs(fc) < Math.abs(fb)) {
+            a = b; b = c; c = a;
+            fa = fb; fb = fc; fc = fa;
+        }
+        const tol1 = 2 * EPS * Math.abs(b) + tol * 0.5;
+        const xm   = (c - b) * 0.5;
+        if (Math.abs(xm) <= tol1 || Math.abs(fb) < tol) return b;
+
+        if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+            let s = fb / fa, p, q, r;
+            if (a === c) {
+                p = 2 * xm * s;  q = 1 - s;
+            } else {
+                q = fa / fc;  r = fb / fc;
+                p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1));
+                q = (q - 1) * (r - 1) * (s - 1);
+            }
+            if (p > 0) q = -q; else p = -p;
+            if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) {
+                e = d;  d = p / q;
+            } else { d = xm;  e = d; }
+        } else { d = xm;  e = d; }
+
+        a = b;  fa = fb;
+        b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
+        fb = f(b);
+        if (!isFinite(fb)) return null;
     }
-    return (a + b) / 2;
+    return b;
+}
+
+// 黄金分割极小值搜索：寻找 |f| 的局部最小点（切根定位）
+function goldenMin(f, a, b) {
+    const phi = (Math.sqrt(5) - 1) * 0.5;
+    let tol = 1e-10;
+    let c = b - phi * (b - a), d = a + phi * (b - a);
+    let fc = Math.abs(f(c)), fd = Math.abs(f(d));
+    for (let i = 0; i < 150 && b - a > tol; i++) {
+        if (fc < fd) { b = d; d = c; fd = fc; c = b - phi*(b-a); fc = Math.abs(f(c)); }
+        else          { a = c; c = d; fc = fd; d = a + phi*(b-a); fd = Math.abs(f(d)); }
+    }
+    return (a + b) * 0.5;
+}
+
+// 切根扫描：在每段里寻找 |f| 的局部极小且值足够小
+function findTouchRoots(f, a, b, n) {
+    const h = (b - a) / n;
+    const out = [];
+    let prevAbs = Math.abs(f(a));
+    let curAbs  = Math.abs(f(a + h));
+    for (let i = 1; i < n; i++) {
+        const nextAbs = Math.abs(f(a + (i + 1) * h));
+        // 局部极小：中间值 < 两侧，且已足够小
+        if (isFinite(curAbs) && curAbs < prevAbs && curAbs < nextAbs && curAbs < 0.5) {
+            const la = a + (i - 1) * h, rb = a + (i + 1) * h;
+            const cx = goldenMin(f, la, rb);
+            if (isFinite(cx) && Math.abs(f(cx)) < 1e-7) out.push(cx);
+        }
+        prevAbs = curAbs;
+        curAbs  = nextAbs;
+    }
+    return out;
+}
+
+// 聚类去重：距离 < gap 的根归为同一个，取中位数
+function clusterRoots(rawRoots, gap) {
+    gap = gap || 1e-5;
+    const sorted = [...rawRoots].sort((a, b) => a - b);
+    const clusters = [];
+    let group = [];
+    for (const r of sorted) {
+        if (group.length === 0 || r - group[group.length-1] < gap) {
+            group.push(r);
+        } else {
+            clusters.push(group);
+            group = [r];
+        }
+    }
+    if (group.length) clusters.push(group);
+    return clusters.map(g => g[Math.floor(g.length / 2)]);
 }
 
 function calculateRoots() {
@@ -702,108 +809,86 @@ function calculateRoots() {
     listEl.innerHTML = '';
 
     if (!exp) { listEl.innerText = '函数未定义'; return; }
+    if (x1 >= x2) { listEl.innerText = 'Start 必须小于 End'; return; }
 
     try {
         const scope = getCombinedScope();
-        const compiled = math.compile(getEvalString(exp));
-        const fn = v => compiled.evaluate({ x: v, ...scope });
+        const rawFn  = v => math.compile(getEvalString(exp)).evaluate({ x: v, ...scope });
+        const fn     = safeFnWrap(rawFn);   // 复数/NaN 安全包装
 
-        const steps = 800;
-        const delta = (x2 - x1) / steps;
-        let roots = [];
+        const STEPS   = 2000;               // 初扫密度
+        const h       = (x2 - x1) / STEPS;
+        const candidates = [];
 
-        for (let i = 0; i <= steps; i++) {
-            const x = x1 + i * delta;
-            const fx = fn(x);
-            if (Math.abs(fx) < 1e-8) {
-                roots.push(x.toFixed(6));
-            }
-            if (i > 0) {
-                const prevX = x1 + (i - 1) * delta;
-                const prevFx = fn(prevX);
-                if (prevFx * fx <= 0) {
-                    const refinedRoots = refinedSearch(fn, prevX, x);
-                    roots.push(...refinedRoots);
+        let prevX = x1, prevF = fn(x1);
+
+        for (let i = 1; i <= STEPS; i++) {
+            const curX = x1 + i * h;
+            const curF = fn(curX);
+
+            if (isFinite(prevF) && isFinite(curF)) {
+                if (prevF * curF < 0) {
+                    // 符号变化 → Brent 精化
+                    const r = brent(fn, prevX, curX);
+                    if (r !== null) candidates.push(r);
+                } else if (prevF * curF === 0) {
+                    // 恰好某端点为零
+                    if (prevF === 0) candidates.push(prevX);
+                    if (curF  === 0) candidates.push(curX);
                 }
             }
+
+            prevX = curX;  prevF = curF;
         }
 
-        if (roots.length === 0) {
-            roots = findRootsWithDerivative(fn, x1, x2, steps);
+        // 切根补充扫描（金分法，捕获 x² 之类的切根）
+        const touchCands = findTouchRoots(fn, x1, x2, STEPS);
+        candidates.push(...touchCands);
+
+        // 对符号变化附近再做二次细分（避免漏掉密集多根区域）
+        const subSteps = 10;
+        const extraCands = [];
+        for (const cand of candidates) {
+            const la = Math.max(x1, cand - h);
+            const rb = Math.min(x2, cand + h);
+            const sh = (rb - la) / subSteps;
+            let pX = la, pF = fn(la);
+            for (let j = 1; j <= subSteps; j++) {
+                const cX = la + j * sh, cF = fn(cX);
+                if (isFinite(pF) && isFinite(cF) && pF * cF < 0) {
+                    const r = brent(fn, pX, cX);
+                    if (r !== null) extraCands.push(r);
+                }
+                pX = cX; pF = cF;
+            }
         }
+        candidates.push(...extraCands);
 
-        roots = [...new Set(roots.map(Number))]
-            .filter(r => !isNaN(r) && Math.abs(fn(r)) < 1e-6)
-            .sort((a, b) => a - b)
-            .map(r => r.toFixed(6));
+        // 聚类去重
+        const clustered = clusterRoots(candidates);
 
-        if (roots.length === 0) {
+        // 最终严格验证：|f(r)| < 1e-6 且为实有限值
+        const TOL = 1e-6;
+        const roots = clustered
+            .filter(r => {
+                const v = fn(r);
+                return isFinite(v) && Math.abs(v) < TOL && r >= x1 && r <= x2;
+            })
+            .sort((a, b) => a - b);
+
+        if (!roots.length) {
             listEl.innerText = '未发现实根';
         } else {
             roots.forEach((r, idx) => {
                 const div = document.createElement('div');
                 div.className = 'root-katex-item';
                 listEl.appendChild(div);
-                katex.render(`x_{${idx + 1}} = ${r}`, div);
+                katex.render(`x_{${idx + 1}} = ${parseFloat(r.toFixed(8))}`, div);
             });
         }
-    } catch (e) {
+    } catch(e) {
         listEl.innerText = '计算出错: ' + e.message;
     }
-}
-
-function refinedSearch(f, a, b, depth = 4) {
-    const roots = [];
-    const stack = [{ a, b, depth }];
-
-    while (stack.length > 0) {
-        const { a, b, depth } = stack.pop();
-        const fa = f(a);
-        const fb = f(b);
-
-        if (Math.abs(fa) < 1e-12) { roots.push(a); continue; }
-        if (Math.abs(fb) < 1e-12) { roots.push(b); continue; }
-
-        if (fa * fb > 0 && Math.abs(fa) > 1e-8 && Math.abs(fb) > 1e-8) {
-            for (let i = 1; i < 5; i++) {
-                const x = a + (b - a) * i / 5;
-                if (Math.abs(f(x)) < 1e-8) roots.push(x);
-            }
-            continue;
-        }
-
-        const root = bisection(f, a, b);
-        if (Math.abs(f(root)) < 1e-6) { roots.push(root); }
-
-        if (depth > 0 && Math.abs(b - a) > 1e-6) {
-            const mid = (a + b) / 2;
-            if (fa * f(mid) <= 0) stack.push({ a, b: mid, depth: depth - 1 });
-            if (f(mid) * fb <= 0) stack.push({ a: mid, b, depth: depth - 1 });
-        }
-    }
-    return [...new Set(roots.map(r => Number(r.toFixed(6))))];
-}
-
-function findRootsWithDerivative(f, a, b, steps = 200) {
-    const roots = [];
-    const delta = (b - a) / steps;
-    for (let i = 0; i <= steps; i++) {
-        const x = a + i * delta;
-        const h = 1e-6;
-        const derivative = (f(x + h) - f(x - h)) / (2 * h);
-
-        if (Math.abs(derivative) < 1e-4) {
-            if (Math.abs(f(x)) < 1e-6) {
-                roots.push(x);
-            } else {
-                const left = Math.max(a, x - delta);
-                const right = Math.min(b, x + delta);
-                const refined = refinedSearch(f, left, right, 3);
-                roots.push(...refined);
-            }
-        }
-    }
-    return roots;
 }
 
 function drawGraph() {
