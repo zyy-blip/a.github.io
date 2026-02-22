@@ -118,7 +118,6 @@
         }
         canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
 
-
         .boundary-grid {
             display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
             gap: 6px; background: #f1f3f4; padding: 8px; border-radius: 14px; flex-shrink: 0;
@@ -211,6 +210,7 @@
             <div class="boundary-item"><span>Y Min</span><input type="number" id="yMin" value="-6"  step="1" onchange="syncFromInput()"></div>
             <div class="boundary-item"><span>Y Max</span><input type="number" id="yMax" value="6"   step="1" onchange="syncFromInput()"></div>
         </div>
+        <button id="btn-trace" class="nav-btn" onclick="toggleTrace()" style="height: 36px; margin-top: 2px; flex-shrink:0;">开启追踪</button>
     </div>
 
     <div class="keyboard" id="keyboard-area">
@@ -277,6 +277,7 @@ let cursorPos = 0;
 let lastAnswerVal = 0;
 let lastAnswerStr = '0';
 let config = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
+let isTraceMode = false; // 追踪模式状态
 
 const VAR_KEYS   = ['a','b','alpha','beta','theta'];
 const VAR_LABELS = { a:'a', b:'b', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
@@ -294,9 +295,6 @@ const ctx            = canvas.getContext('2d');
     VAR_KEYS.forEach(k => { katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false }); });
 })();
 
-// ══════════════════════════════════════════════════════════════
-//  核心：求值字符串转化（将内部的块域 {} 映射回普通括号 () 以供MathJS计算）
-// ══════════════════════════════════════════════════════════════
 function getEvalString(expr) {
     if (!expr) return '';
     return expr.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, '1');
@@ -359,8 +357,6 @@ function getCombinedScope() {
     const scope = { a: varVals.a, b: varVals.b, alpha: varVals.alpha, beta: varVals.beta, theta: varVals.theta, Ans: lastAnswerVal };
     try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
     try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
-    try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
-    try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
     return scope;
 }
 
@@ -400,59 +396,41 @@ function evaluateWithSpecials(exprStr, scope) {
     return math.evaluate(str, scope);
 }
 
-// ══════════════════════════════════════════════════════════════
-//  渲染管线：全新定制的 MathJS Handler 以支持绝美的纯 LaTeX 塔
-// ══════════════════════════════════════════════════════════════
 function expressionToTexForDisplay(str) {
     if (!str) return '';
-    // 用 XboxX 替用 □ 以通过 MathJS 原生语法树解析；用 () 替换 {}
     let parseStr = str.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, 'XboxX');
 
     try {
         let tex = math.parse(parseStr).toTex({
             handler: function(node, options) {
-                // 拦截指数运算，剔除自动生成的难看括号（从而形成真正的指数塔）
                 if (node.isOperatorNode && node.op === '^') {
                     const base = node.args[0].toTex(options);
                     let exp = node.args[1].toTex(options);
-                    if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) {
-                        exp = exp.slice(6, -7);
-                    }
+                    if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) exp = exp.slice(6, -7);
                     return `${base}^{${exp}}`;
                 }
-                // 在 AST 层面全局接管积分和求导渲染，彻底摆脱过去的字符拼接错误
                 if (node.isFunctionNode) {
                     if (node.fn.name === 'int' && node.args.length === 3) {
-                        const a = node.args[0].toTex(options);
-                        const b = node.args[1].toTex(options);
-                        const c = node.args[2].toTex(options);
-                        return `\\int_{${b}}^{${c}} ${a} \\, dx`;
+                        return `\\int_{${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}} ${node.args[0].toTex(options)} \\, dx`;
                     }
                     if (node.fn.name === 'deriv' && node.args.length === 2) {
-                        const a = node.args[0].toTex(options);
-                        const b = node.args[1].toTex(options);
-                        return `\\left.\\frac{d}{dx}\\left(${a}\\right)\\right|_{x=${b}}`;
+                        return `\\left.\\frac{d}{dx}\\left(${node.args[0].toTex(options)}\\right)\\right|_{x=${node.args[1].toTex(options)}}`;
                     }
                 }
             }
         });
         return tex.replace(/XboxX/g, '\\square');
     } catch(e) {
-        // 如果在输入过程中出现语法未闭合，直接返回原生形式作为 Fallback 保底
         return parseStr.replace(/XboxX/g, '\\square');
     }
 }
 
 function getDisplayTex(expr, mode) {
     let s = expr;
-    // 注入游标标记
     if (mode === state.mode) {
         s = s.substring(0, cursorPos) + 'XcurX' + s.substring(cursorPos);
     }
-
     let tex = expressionToTexForDisplay(s);
-
-    // XcurX 在 MathJS 的 AST 中可能被视为隐式乘法，前后会被打上空格或点乘。正则捕获并消除这些干扰
     tex = tex.replace(/(?:\\cdot\s*|\s+)?XcurX(?:\s*\\cdot|\s+)?/g, '\\htmlClass{cursor-blink}{|}');
     tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
 
@@ -482,34 +460,19 @@ function updatePlotScreen() {
 }
 
 function append(v) {
-    let insertStr = v;
-    let offset = v.length;
-
-    // 接管特定算符为块级输入
-    if (v === '^{}') {
-        insertStr = '^{□}';
-        offset = 2; // 光标进入花括号内的方框处
-    } else if (v === '^{2}') {
-        insertStr = '^{2}';
-        offset = 4; // 光标越过花括号到结尾
-    } else if (v === '*10^{}') {
-        insertStr = '*10^{□}';
-        offset = 5;
-    } else if (v === 'int(') {
-        insertStr = 'int(□,□,□)';
-        offset = 4;
-    } else if (v === 'deriv(') {
-        insertStr = 'deriv(□,□)';
-        offset = 6;
-    }
+    let insertStr = v, offset = v.length;
+    if (v === '^{}') { insertStr = '^{□}'; offset = 2; }
+    else if (v === '^{2}') { insertStr = '^{2}'; offset = 4; }
+    else if (v === '*10^{}') { insertStr = '*10^{□}'; offset = 5; }
+    else if (v === 'int(') { insertStr = 'int(□,□,□)'; offset = 4; }
+    else if (v === 'deriv(') { insertStr = 'deriv(□,□)'; offset = 6; }
 
     if (currentExpression[cursorPos] === '□') {
         currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos + 1);
     } else {
         currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos);
     }
-    cursorPos += offset;
-    renderLatex();
+    cursorPos += offset; renderLatex();
 }
 
 function deleteLast() {
@@ -517,55 +480,33 @@ function deleteLast() {
     let leftStr = currentExpression.substring(0, cursorPos);
     let rightStr = currentExpression.substring(cursorPos);
 
-    // 块域收尾保护：防止从外侧误删指数块边界，如遇右边界将游标推回块域内
-    if (leftStr.endsWith('}')) {
-        cursorPos -= 1;
-        renderLatex();
-        return;
-    }
-
-    // 探测块域空载：如果为空指数块，直接全块拔除
+    if (leftStr.endsWith('}')) { cursorPos -= 1; renderLatex(); return; }
     if (leftStr.endsWith('^{') && rightStr.startsWith('□}')) {
         currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(2);
-        cursorPos -= 2;
-        renderLatex();
-        return;
+        cursorPos -= 2; renderLatex(); return;
     }
     if (leftStr.endsWith('^{') && rightStr.startsWith('}')) {
         currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1);
-        cursorPos -= 2;
-        renderLatex();
-        return;
+        cursorPos -= 2; renderLatex(); return;
     }
 
     const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{'];
-    let deletedLen = 1;
-    let isBracketBlock = false;
+    let deletedLen = 1, isBracketBlock = false;
 
     for (let t of atomicTokens) {
-        if (leftStr.endsWith(t)) {
-            deletedLen = t.length;
-            if (t === '^{') isBracketBlock = true;
-            break;
-        }
+        if (leftStr.endsWith(t)) { deletedLen = t.length; if (t === '^{') isBracketBlock = true; break; }
     }
 
     if (isBracketBlock) {
-        // 解压包裹体：如果你强行从块域头部执行删除，它将脱下大括号，令其子代“掉出”到上一级
         leftStr = leftStr.substring(0, leftStr.length - 2);
         let depth = 1, matchIdx = -1;
         for (let i = 0; i < rightStr.length; i++) {
-            if (rightStr[i] === '{') depth++;
-            else if (rightStr[i] === '}') depth--;
+            if (rightStr[i] === '{') depth++; else if (rightStr[i] === '}') depth--;
             if (depth === 0) { matchIdx = i; break; }
         }
-        if (matchIdx !== -1) {
-            rightStr = rightStr.substring(0, matchIdx) + rightStr.substring(matchIdx + 1);
-        }
-        currentExpression = leftStr + rightStr;
-        cursorPos -= 2;
+        if (matchIdx !== -1) rightStr = rightStr.substring(0, matchIdx) + rightStr.substring(matchIdx + 1);
+        currentExpression = leftStr + rightStr; cursorPos -= 2;
     } else {
-        // 普通单字/函数头删除
         currentExpression = leftStr.substring(0, leftStr.length - deletedLen) + rightStr;
         cursorPos -= deletedLen;
     }
@@ -573,30 +514,22 @@ function deleteLast() {
 }
 
 function clearAll() {
-    currentExpression = '';
-    cursorPos = 0;
-    renderLatex();
+    currentExpression = ''; cursorPos = 0; renderLatex();
     if (state.mode === 'main') resVal.innerText = '0';
     if (state.mode === 'vars') resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
 }
 
 function calculate() {
-    if (currentExpression.includes('□')) {
-        resVal.innerText = 'Syntax Error';
-        return;
-    }
+    if (currentExpression.includes('□')) { resVal.innerText = 'Syntax Error'; return; }
     const evalStr = getEvalString(currentExpression);
     if (state.mode === 'vars') {
         try {
             const scope = getCombinedScope();
             const res = evaluateWithSpecials(evalStr, scope);
             const num = typeof res === 'number' ? res : parseFloat(math.format(res));
-            varVals[activeVar]  = num;
-            varExprs[activeVar] = currentExpression;
-            lastAnswerVal = num;
-            lastAnswerStr = math.format(res, { precision:10 });
-            resVal.innerText = '= ' + lastAnswerStr;
-            updateVarsPanel();
+            varVals[activeVar] = num; varExprs[activeVar] = currentExpression;
+            lastAnswerVal = num; lastAnswerStr = math.format(res, { precision:10 });
+            resVal.innerText = '= ' + lastAnswerStr; updateVarsPanel();
         } catch(e) { resVal.innerText = 'Error'; }
         return;
     }
@@ -611,25 +544,18 @@ function calculate() {
 
 function switchMode(m) {
     if (state.mode === 'vars') {
-        varExprs[activeVar] = currentExpression;
-        state.expr.vars = currentExpression;
-    } else {
-        state.expr[state.mode] = currentExpression;
-    }
+        varExprs[activeVar] = currentExpression; state.expr.vars = currentExpression;
+    } else { state.expr[state.mode] = currentExpression; }
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('nav-' + m).classList.add('active');
     state.mode = m;
 
-    if (m === 'vars') { currentExpression = varExprs[activeVar]; }
-    else { currentExpression = state.expr[m] || ''; }
-
+    if (m === 'vars') currentExpression = varExprs[activeVar];
+    else currentExpression = state.expr[m] || '';
     cursorPos = currentExpression.length;
 
-    const isVars  = m === 'vars';
-    const isPlot  = m === 'plot';
-    const isRoots = m === 'roots';
-
+    const isVars = m === 'vars', isPlot = m === 'plot', isRoots = m === 'roots';
     document.getElementById('main-screen').style.display    = isRoots ? 'none'  : 'flex';
     document.getElementById('keyboard-area').style.display  = (isPlot||isRoots) ? 'none' : 'grid';
     document.getElementById('graph-area').style.display     = isPlot  ? 'flex'  : 'none';
@@ -637,24 +563,35 @@ function switchMode(m) {
     document.getElementById('vars-panel').style.display     = isVars  ? 'flex'  : 'none';
 
     if (isPlot) {
-        singleDisplay.style.display = 'none';
-        doubleDisplay.style.display = 'flex';
-        resVal.style.display        = 'none';
-        updatePlotScreen();
-        setTimeout(() => { initCanvas(); drawGraph(); }, 50);
+        singleDisplay.style.display = 'none'; doubleDisplay.style.display = 'flex'; resVal.style.display = 'none';
+        updatePlotScreen(); setTimeout(() => { initCanvas(); drawGraph(); }, 50);
     } else if (!isRoots) {
-        singleDisplay.style.display = 'block';
-        doubleDisplay.style.display = 'none';
-        resVal.style.display        = 'block';
-        if (m === 'main')  resVal.innerText = '= ' + lastAnswerStr;
-        else if (isVars)   { resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8)); updateVarsPanel(); }
-        else               resVal.innerText = m + ' 模式';
+        singleDisplay.style.display = 'block'; doubleDisplay.style.display = 'none'; resVal.style.display = 'block';
+        if (m === 'main') resVal.innerText = '= ' + lastAnswerStr;
+        else if (isVars) { resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8)); updateVarsPanel(); }
+        else resVal.innerText = m + ' 模式';
         renderLatex();
     }
 }
 
 // ══════════════════════════════════════════════════════════════
-//  原有绘图与求根业务线（现完全接入统一的 evalStr 化机制）
+// 追踪模式切换逻辑
+// ══════════════════════════════════════════════════════════════
+function toggleTrace() {
+    isTraceMode = !isTraceMode;
+    const btn = document.getElementById('btn-trace');
+    if (isTraceMode) {
+        btn.classList.add('active');
+        btn.innerText = '关闭追踪';
+    } else {
+        btn.classList.remove('active');
+        btn.innerText = '开启追踪';
+        drawGraph(); // 关闭追踪时清除悬浮辅助线
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 全新健壮求根算法核心（一阶导探测法 + 严格复数过滤）
 // ══════════════════════════════════════════════════════════════
 function setRootTarget(t) {
     state.rootTarget = t;
@@ -662,6 +599,153 @@ function setRootTarget(t) {
     document.getElementById('root-target-g').classList.toggle('active', t==='g');
 }
 
+// 极其严苛的实数域包装：任何带有虚部的（即使极其微小）统统过滤，杜绝 x^x 产生复数伪根
+function safeFnWrap(rawFn) {
+    return function(x) {
+        try {
+            const v = rawFn(x);
+            if (typeof v === 'number') return (isNaN(v) || !isFinite(v)) ? NaN : v;
+            if (v && typeof v === 'object' && 're' in v) {
+                if (Math.abs(v.im) > 1e-12) return NaN; // 严格拒绝复数
+                return v.re;
+            }
+            return NaN;
+        } catch(e) { return NaN; }
+    };
+}
+
+// Brent 方法求穿过 0 的解
+function brent(f, a, b, tol = 1e-12) {
+    let fa = f(a), fb = f(b);
+    if (isNaN(fa) || isNaN(fb) || fa * fb > 0) return null;
+    if (Math.abs(fa) < tol) return a;
+    if (Math.abs(fb) < tol) return b;
+
+    let c = a, fc = fa, d = b - a, e = d;
+    const EPS = 2.22e-16;
+    for (let iter = 0; iter < 120; iter++) {
+        if (fb * fc > 0) { c = a; fc = fa; d = e = b - a; }
+        if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
+        const tol1 = 2 * EPS * Math.abs(b) + tol * 0.5;
+        const xm = (c - b) * 0.5;
+        if (Math.abs(xm) <= tol1 || Math.abs(fb) < tol) return b;
+        if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+            let s = fb / fa, p, q, r;
+            if (a === c) { p = 2 * xm * s; q = 1 - s; }
+            else {
+                q = fa / fc; r = fb / fc;
+                p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1));
+                q = (q - 1) * (r - 1) * (s - 1);
+            }
+            if (p > 0) q = -q; else p = -p;
+            if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) { e = d; d = p / q; }
+            else { d = xm; e = d; }
+        } else { d = xm; e = d; }
+        a = b; fa = fb;
+        b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
+        fb = f(b);
+        if (isNaN(fb)) return null;
+    }
+    return b;
+}
+
+function calculateRoots() {
+    const x1 = parseFloat(document.getElementById('rootX1').value);
+    const x2 = parseFloat(document.getElementById('rootX2').value);
+    const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
+    const listEl = document.getElementById('root-list');
+    listEl.innerHTML = '';
+
+    if (!exp) { listEl.innerText = '函数未定义'; return; }
+    if (x1 >= x2) { listEl.innerText = 'Start 必须小于 End'; return; }
+
+    try {
+        const scope = getCombinedScope();
+        const rawFn = v => math.compile(getEvalString(exp)).evaluate({ x: v, ...scope });
+        const fn = safeFnWrap(rawFn);
+
+        // 获取数值一阶导数（专门用于捕获 x^2 这类相切但不穿越的根）
+        const dFn = x => {
+            const h = 1e-6;
+            const f1 = fn(x + h), f2 = fn(x - h);
+            if(isNaN(f1) || isNaN(f2)) return NaN;
+            return (f1 - f2) / (2 * h);
+        };
+
+        const STEPS = 8000; // 超高扫描密度以防遗漏震荡函数 sin(e^x)
+        const h = (x2 - x1) / STEPS;
+        const candidates = [];
+
+        let prevX = x1, prevF = fn(x1), prevDF = dFn(x1);
+
+        for (let i = 1; i <= STEPS; i++) {
+            const curX = x1 + i * h;
+            const curF = fn(curX);
+            const curDF = dFn(curX);
+
+            // 1. 常规穿叉根
+            if (!isNaN(prevF) && !isNaN(curF)) {
+                if (prevF * curF < 0) {
+                    const r = brent(fn, prevX, curX);
+                    if (r !== null) candidates.push(r);
+                } else if (prevF === 0) {
+                    candidates.push(prevX);
+                }
+            }
+
+            // 2. 一阶导数过 0 的点（可能是相切根，如 x^2, x^6 的底部）
+            if (!isNaN(prevDF) && !isNaN(curDF)) {
+                if (prevDF * curDF < 0) {
+                    const r = brent(dFn, prevX, curX);
+                    // 找到了极值点，再验证函数值是否等于0
+                    if (r !== null && Math.abs(fn(r)) < 1e-6) candidates.push(r);
+                }
+            }
+
+            prevX = curX; prevF = curF; prevDF = curDF;
+        }
+
+        const TOL = 1e-6;
+        let finalRoots = candidates
+            .filter(r => !isNaN(r) && r >= x1 - 1e-5 && r <= x2 + 1e-5)
+            .map(r => Math.abs(r) < 1e-10 ? 0 : r) // 将极度接近0的浮点吸附归零
+            .filter(r => Math.abs(fn(r)) < TOL) // 二次严格筛选
+            .sort((a, b) => a - b);
+
+        // 强力聚类：解决多重根（如同一个点附近因精度报出多个极小值）
+        const clustered = [];
+        for (let i = 0; i < finalRoots.length; i++) {
+            if (clustered.length === 0) {
+                clustered.push(finalRoots[i]);
+            } else {
+                const last = clustered[clustered.length - 1];
+                if (Math.abs(finalRoots[i] - last) > 1e-4) {
+                    clustered.push(finalRoots[i]);
+                } else {
+                    // 若距离太近，保留函数绝对值更接近0的那个解
+                    if (Math.abs(fn(finalRoots[i])) < Math.abs(fn(last))) {
+                        clustered[clustered.length - 1] = finalRoots[i];
+                    }
+                }
+            }
+        }
+
+        if (!clustered.length) {
+            listEl.innerText = '未发现实根';
+        } else {
+            clustered.forEach((r, idx) => {
+                const div = document.createElement('div');
+                div.className = 'root-katex-item';
+                listEl.appendChild(div);
+                katex.render(`x_{${idx + 1}} = ${parseFloat(r.toFixed(8))}`, div);
+            });
+        }
+    } catch(e) { listEl.innerText = '计算出错: ' + e.message; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 绘图与画布交互核心
+// ══════════════════════════════════════════════════════════════
 function initCanvas() {
     const wrap=document.getElementById('canvas-wrap');
     const dpr=window.devicePixelRatio||1;
@@ -680,215 +764,6 @@ function makeMappers() {
         invX: px=>config.xMin+(px/w)*(config.xMax-config.xMin),
         invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin),
     };
-}
-
-// ══════════════════════════════════════════════════════════════
-//  健壮求根引擎 v2
-//  · safeFn  ——  过滤复数/NaN，仅接受实有限值
-//  · brent   ——  Brent 法精化有符号变向区间，精度 1e-12
-//  · goldenMin / touchRoots —— 金分搜索 |f| 极小值，捕获切根
-//  · 主扫描 2000 段 + 细分 + 聚类去重
-// ══════════════════════════════════════════════════════════════
-
-// 安全求值：复数（虚部>1e-10）→ NaN，保障 x^x 不产生假根
-function safeFnWrap(rawFn) {
-    return function(x) {
-        try {
-            const v = rawFn(x);
-            if (typeof v === 'number') return isFinite(v) ? v : NaN;
-            // mathjs Complex 对象
-            if (v !== null && typeof v === 'object' && 're' in v) {
-                return Math.abs(v.im) < 1e-10 ? v.re : NaN;
-            }
-            return NaN;
-        } catch(e) { return NaN; }
-    };
-}
-
-// Brent 法：在 f(a)·f(b)≤0 的区间内求根，超线性收敛
-function brent(f, a, b, tol) {
-    tol = tol || 1e-12;
-    let fa = f(a), fb = f(b);
-    if (!isFinite(fa) || !isFinite(fb)) return null;
-    if (fa * fb > 0) return null;
-    if (Math.abs(fa) < tol) return a;
-    if (Math.abs(fb) < tol) return b;
-
-    let c = a, fc = fa, d = b - a, e = d;
-    const EPS = 2.22e-16;
-
-    for (let iter = 0; iter < 120; iter++) {
-        if (fb * fc > 0) { c = a; fc = fa; d = e = b - a; }
-        if (Math.abs(fc) < Math.abs(fb)) {
-            a = b; b = c; c = a;
-            fa = fb; fb = fc; fc = fa;
-        }
-        const tol1 = 2 * EPS * Math.abs(b) + tol * 0.5;
-        const xm   = (c - b) * 0.5;
-        if (Math.abs(xm) <= tol1 || Math.abs(fb) < tol) return b;
-
-        if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
-            let s = fb / fa, p, q, r;
-            if (a === c) {
-                p = 2 * xm * s;  q = 1 - s;
-            } else {
-                q = fa / fc;  r = fb / fc;
-                p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1));
-                q = (q - 1) * (r - 1) * (s - 1);
-            }
-            if (p > 0) q = -q; else p = -p;
-            if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) {
-                e = d;  d = p / q;
-            } else { d = xm;  e = d; }
-        } else { d = xm;  e = d; }
-
-        a = b;  fa = fb;
-        b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
-        fb = f(b);
-        if (!isFinite(fb)) return null;
-    }
-    return b;
-}
-
-// 黄金分割极小值搜索：寻找 |f| 的局部最小点（切根定位）
-function goldenMin(f, a, b) {
-    const phi = (Math.sqrt(5) - 1) * 0.5;
-    let tol = 1e-10;
-    let c = b - phi * (b - a), d = a + phi * (b - a);
-    let fc = Math.abs(f(c)), fd = Math.abs(f(d));
-    for (let i = 0; i < 150 && b - a > tol; i++) {
-        if (fc < fd) { b = d; d = c; fd = fc; c = b - phi*(b-a); fc = Math.abs(f(c)); }
-        else          { a = c; c = d; fc = fd; d = a + phi*(b-a); fd = Math.abs(f(d)); }
-    }
-    return (a + b) * 0.5;
-}
-
-// 切根扫描：在每段里寻找 |f| 的局部极小且值足够小
-function findTouchRoots(f, a, b, n) {
-    const h = (b - a) / n;
-    const out = [];
-    let prevAbs = Math.abs(f(a));
-    let curAbs  = Math.abs(f(a + h));
-    for (let i = 1; i < n; i++) {
-        const nextAbs = Math.abs(f(a + (i + 1) * h));
-        // 局部极小：中间值 < 两侧，且已足够小
-        if (isFinite(curAbs) && curAbs < prevAbs && curAbs < nextAbs && curAbs < 0.5) {
-            const la = a + (i - 1) * h, rb = a + (i + 1) * h;
-            const cx = goldenMin(f, la, rb);
-            if (isFinite(cx) && Math.abs(f(cx)) < 1e-7) out.push(cx);
-        }
-        prevAbs = curAbs;
-        curAbs  = nextAbs;
-    }
-    return out;
-}
-
-// 聚类去重：距离 < gap 的根归为同一个，取中位数
-function clusterRoots(rawRoots, gap) {
-    gap = gap || 1e-5;
-    const sorted = [...rawRoots].sort((a, b) => a - b);
-    const clusters = [];
-    let group = [];
-    for (const r of sorted) {
-        if (group.length === 0 || r - group[group.length-1] < gap) {
-            group.push(r);
-        } else {
-            clusters.push(group);
-            group = [r];
-        }
-    }
-    if (group.length) clusters.push(group);
-    return clusters.map(g => g[Math.floor(g.length / 2)]);
-}
-
-function calculateRoots() {
-    const x1 = parseFloat(document.getElementById('rootX1').value);
-    const x2 = parseFloat(document.getElementById('rootX2').value);
-    const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
-    const listEl = document.getElementById('root-list');
-    listEl.innerHTML = '';
-
-    if (!exp) { listEl.innerText = '函数未定义'; return; }
-    if (x1 >= x2) { listEl.innerText = 'Start 必须小于 End'; return; }
-
-    try {
-        const scope = getCombinedScope();
-        const rawFn  = v => math.compile(getEvalString(exp)).evaluate({ x: v, ...scope });
-        const fn     = safeFnWrap(rawFn);   // 复数/NaN 安全包装
-
-        const STEPS   = 2000;               // 初扫密度
-        const h       = (x2 - x1) / STEPS;
-        const candidates = [];
-
-        let prevX = x1, prevF = fn(x1);
-
-        for (let i = 1; i <= STEPS; i++) {
-            const curX = x1 + i * h;
-            const curF = fn(curX);
-
-            if (isFinite(prevF) && isFinite(curF)) {
-                if (prevF * curF < 0) {
-                    // 符号变化 → Brent 精化
-                    const r = brent(fn, prevX, curX);
-                    if (r !== null) candidates.push(r);
-                } else if (prevF * curF === 0) {
-                    // 恰好某端点为零
-                    if (prevF === 0) candidates.push(prevX);
-                    if (curF  === 0) candidates.push(curX);
-                }
-            }
-
-            prevX = curX;  prevF = curF;
-        }
-
-        // 切根补充扫描（金分法，捕获 x² 之类的切根）
-        const touchCands = findTouchRoots(fn, x1, x2, STEPS);
-        candidates.push(...touchCands);
-
-        // 对符号变化附近再做二次细分（避免漏掉密集多根区域）
-        const subSteps = 10;
-        const extraCands = [];
-        for (const cand of candidates) {
-            const la = Math.max(x1, cand - h);
-            const rb = Math.min(x2, cand + h);
-            const sh = (rb - la) / subSteps;
-            let pX = la, pF = fn(la);
-            for (let j = 1; j <= subSteps; j++) {
-                const cX = la + j * sh, cF = fn(cX);
-                if (isFinite(pF) && isFinite(cF) && pF * cF < 0) {
-                    const r = brent(fn, pX, cX);
-                    if (r !== null) extraCands.push(r);
-                }
-                pX = cX; pF = cF;
-            }
-        }
-        candidates.push(...extraCands);
-
-        // 聚类去重
-        const clustered = clusterRoots(candidates);
-
-        // 最终严格验证：|f(r)| < 1e-6 且为实有限值
-        const TOL = 1e-6;
-        const roots = clustered
-            .filter(r => {
-                const v = fn(r);
-                return isFinite(v) && Math.abs(v) < TOL && r >= x1 && r <= x2;
-            })
-            .sort((a, b) => a - b);
-
-        if (!roots.length) {
-            listEl.innerText = '未发现实根';
-        } else {
-            roots.forEach((r, idx) => {
-                const div = document.createElement('div');
-                div.className = 'root-katex-item';
-                listEl.appendChild(div);
-                katex.render(`x_{${idx + 1}} = ${parseFloat(r.toFixed(8))}`, div);
-            });
-        }
-    } catch(e) {
-        listEl.innerText = '计算出错: ' + e.message;
-    }
 }
 
 function drawGraph() {
@@ -980,6 +855,7 @@ function drawTracker(px,py) {
     ctx.closePath();ctx.fill();ctx.stroke();
     ctx.shadowBlur=0;
 
+    const CM_FONT = "'Computer Modern Serif', 'CMU Serif', Georgia, serif";
     ctx.font=`${fSize}px ${CM_FONT}`;ctx.textBaseline='middle';
     lines.forEach((line,i)=>{
         ctx.fillStyle=line.color;
@@ -988,9 +864,6 @@ function drawTracker(px,py) {
     ctx.restore();
 }
 
-// ══════════════════════════════════════════════════════════════
-//  坐标辅助
-// ══════════════════════════════════════════════════════════════
 function canvasPixelCoords(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     const dpr  = window.devicePixelRatio || 1;
@@ -1002,18 +875,24 @@ function canvasPixelCoords(clientX, clientY) {
     };
 }
 
-// ══════════════════════════════════════════════════════════════
-//  鼠标事件（桌面端：hover 追踪 + 滚轮缩放）
-// ══════════════════════════════════════════════════════════════
+// 事件接管逻辑：当开启追踪时，追踪坐标；未开启时，负责平移缩放
 canvas.addEventListener('mousemove', e => {
+    if (!isTraceMode) return;
     const { px, py } = canvasPixelCoords(e.clientX, e.clientY);
     drawTracker(px, py);
 });
 
-canvas.addEventListener('mouseleave', () => drawGraph());
+canvas.addEventListener('mousedown', e => {
+    if (!isTraceMode) return;
+    const { px, py } = canvasPixelCoords(e.clientX, e.clientY);
+    drawTracker(px, py);
+});
+
+canvas.addEventListener('mouseleave', () => { drawGraph(); });
 
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
+    if (isTraceMode) return; // 追踪模式下屏蔽滚轮缩放
     const factor = e.deltaY > 0 ? 1.12 : 0.9;
     const dx = (config.xMax - config.xMin) * (factor - 1);
     const dy = (config.yMax - config.yMin) * (factor - 1);
@@ -1022,13 +901,7 @@ canvas.addEventListener('wheel', e => {
     syncRangeInputsFromConfig(); drawGraph();
 }, { passive: false });
 
-// ══════════════════════════════════════════════════════════════
-//  触摸手势（手机端）
-//  · 单指拖动 → 平移视图
-//  · 双指捏合/张开 → 缩放（横向改 X 轴，纵向改 Y 轴，可各自独立）
-// ══════════════════════════════════════════════════════════════
-let touch1 = null, touch2 = null;  // 上一帧的触摸快照
-
+let touch1 = null, touch2 = null;
 function getTouchById(list, id) {
     for (const t of list) if (t.identifier === id) return t;
     return null;
@@ -1036,6 +909,11 @@ function getTouchById(list, id) {
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (isTraceMode) {
+        const { px, py } = canvasPixelCoords(e.touches[0].clientX, e.touches[0].clientY);
+        drawTracker(px, py);
+        return;
+    }
     if (e.touches.length === 1) {
         touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
         touch2 = null;
@@ -1047,10 +925,13 @@ canvas.addEventListener('touchstart', e => {
 
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
+    if (isTraceMode) {
+        const { px, py } = canvasPixelCoords(e.touches[0].clientX, e.touches[0].clientY);
+        drawTracker(px, py);
+        return;
+    }
     const rect = canvas.getBoundingClientRect();
-
     if (e.touches.length === 1 && touch1 && !touch2) {
-        // ── 单指平移 ──
         const t = getTouchById(e.touches, touch1.id) || e.touches[0];
         const dx = (t.clientX - touch1.x) / rect.width  * (config.xMax - config.xMin);
         const dy = (t.clientY - touch1.y) / rect.height * (config.yMax - config.yMin);
@@ -1058,19 +939,13 @@ canvas.addEventListener('touchmove', e => {
         config.yMin += dy; config.yMax += dy;
         touch1 = { id: t.identifier, x: t.clientX, y: t.clientY };
         syncRangeInputsFromConfig(); drawGraph();
-
     } else if (e.touches.length >= 2 && touch1 && touch2) {
-        // ── 双指捏合缩放 ──
         const ta = getTouchById(e.touches, touch1.id) || e.touches[0];
         const tb = getTouchById(e.touches, touch2.id) || e.touches[1];
-
-        // 上一帧两指间距（水平/垂直分量分开，实现独立轴向缩放）
         const prevDx = Math.abs(touch1.x - touch2.x);
         const prevDy = Math.abs(touch1.y - touch2.y);
         const curDx  = Math.abs(ta.clientX - tb.clientX);
         const curDy  = Math.abs(ta.clientY - tb.clientY);
-
-        // 以两指中心为缩放锚点
         const midClientX = (ta.clientX + tb.clientX) / 2;
         const midClientY = (ta.clientY + tb.clientY) / 2;
         const anchorRatioX = (midClientX - rect.left) / rect.width;
@@ -1078,15 +953,12 @@ canvas.addEventListener('touchmove', e => {
         const anchorMathX  = config.xMin + anchorRatioX * (config.xMax - config.xMin);
         const anchorMathY  = config.yMax - anchorRatioY * (config.yMax - config.yMin);
 
-        // X 轴缩放（水平捏合）
         if (prevDx > 5 && curDx > 5) {
-            const scaleX = prevDx / curDx;  // <1 放大，>1 缩小
+            const scaleX = prevDx / curDx;
             const xRange = (config.xMax - config.xMin) * scaleX;
             config.xMin = anchorMathX - anchorRatioX * xRange;
             config.xMax = config.xMin + xRange;
         }
-
-        // Y 轴缩放（垂直捏合）
         if (prevDy > 5 && curDy > 5) {
             const scaleY = prevDy / curDy;
             const yRange = (config.yMax - config.yMin) * scaleY;
@@ -1094,7 +966,6 @@ canvas.addEventListener('touchmove', e => {
             config.yMin = config.yMax - yRange;
         }
 
-        // 同时处理双指整体平移（两指中点的移动）
         const prevMidX = (touch1.x + touch2.x) / 2;
         const prevMidY = (touch1.y + touch2.y) / 2;
         const panDx = (midClientX - prevMidX) / rect.width  * (config.xMax - config.xMin);
@@ -1110,10 +981,8 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('touchend', e => {
     e.preventDefault();
-    // 重新记录剩余触点
-    if (e.touches.length === 0) {
-        touch1 = null; touch2 = null;
-    } else if (e.touches.length === 1) {
+    if (e.touches.length === 0) { touch1 = null; touch2 = null; }
+    else if (e.touches.length === 1) {
         touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
         touch2 = null;
     }
@@ -1121,9 +990,6 @@ canvas.addEventListener('touchend', e => {
 
 canvas.addEventListener('touchcancel', () => { touch1 = null; touch2 = null; });
 
-// ══════════════════════════════════════════════════════════════
-//  XY 数值输入框同步
-// ══════════════════════════════════════════════════════════════
 function syncRangeInputsFromConfig() {
     document.getElementById('xMin').value = +config.xMin.toFixed(3);
     document.getElementById('xMax').value = +config.xMax.toFixed(3);
