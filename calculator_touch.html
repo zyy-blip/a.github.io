@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>网页版CASIO</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/fonts.css">
+
+    <style>
+        :root {
+            --bg-color: #f0f3f6;
+            --calc-bg: #ffffff;
+            --screen-bg: #fdfdfd;
+            --btn-primary: #4a90e2;
+            --btn-danger: #f56c6c;
+            --text-main: #1a1a1a;
+            --color-fx: #0984e3;
+            --color-gx: #e17055;
+            --cm: 'Computer Modern Serif', 'CMU Serif', Georgia, serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; font-family: var(--cm);
+        }
+
+        .calculator {
+            background-color: var(--calc-bg);
+            width: 400px; height: 692px;
+            border-radius: 30px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.15);
+            padding: 20px 24px 22px;
+            display: flex; flex-direction: column; gap: 9px;
+            border: 1px solid #d1d9e0;
+            overflow-x: hidden;
+        }
+
+        .top-nav { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; flex-shrink: 0; }
+        .nav-btn {
+            border: 1px solid #e0e6ed; background-color: #f8fafc;
+            color: var(--text-main); border-radius: 10px; height: 34px;
+            font-size: 12px; font-family: var(--cm); font-weight: 800;
+            cursor: pointer; transition: 0.2s;
+        }
+        .nav-btn.active { background-color: var(--btn-primary); color: white; border-color: var(--btn-primary); }
+
+        .screen {
+            background-color: var(--screen-bg); border-radius: 16px;
+            border: 1px solid #dcdfe6; padding: 10px 14px;
+            display: flex; flex-direction: column; justify-content: center;
+            min-height: 88px; flex-shrink: 0;
+        }
+        .plot-info-area { display: none; flex-direction: column; gap: 5px; overflow: hidden; }
+        .latex-line {
+            width: 100%; overflow-x: auto; white-space: nowrap;
+            font-size: 17px; padding-bottom: 2px; border-bottom: 1px solid #f3f3f3;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+        .cursor-blink {
+            animation: blink 1.2s step-end infinite;
+            color: var(--btn-primary);
+            font-weight: 800;
+        }
+
+        .vars-panel { display: none; flex-direction: column; gap: 5px; flex-shrink: 0; }
+        .var-row {
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc; border: 1.5px solid #e0e6ed;
+            border-radius: 10px; padding: 0 14px; height: 30px;
+            cursor: pointer; transition: 0.15s; flex-shrink: 0;
+        }
+        .var-row.active {
+            background: #eef4fd; border-color: var(--btn-primary);
+            box-shadow: 0 0 0 2px rgba(74,144,226,0.18);
+        }
+        .var-row:hover:not(.active) { background: #f1f4f8; }
+        .var-name-cell {
+            width: 28px; flex-shrink: 0; font-size: 15px;
+            font-family: var(--cm); font-weight: 700; color: var(--text-main);
+            display: flex; align-items: center;
+        }
+        .var-eq { color: #aaa; font-size: 13px; flex-shrink: 0; }
+        .var-val-cell {
+            flex: 1; text-align: right; font-size: 13px;
+            font-family: var(--cm); color: #555; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis;
+        }
+        .var-expr-cell {
+            flex: 2; text-align: left; font-size: 12px;
+            font-family: var(--cm); color: #999; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis;
+        }
+
+        .keyboard { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; min-height: 0; }
+        button {
+            border: 1px solid #eaedf0; border-radius: 12px; background-color: #fff;
+            cursor: pointer; transition: all 0.1s;
+            font-family: var(--cm); font-size: 19px; font-weight: 800; color: var(--text-main);
+        }
+        button:active { transform: scale(0.94); background-color: #f5f5f5; }
+        .btn-func   { color: var(--btn-primary); font-style: italic; font-size: 21px; }
+        .btn-var    { color: #7c5cbf; font-style: italic; font-size: 19px; }
+        .btn-calc   { background-color: var(--btn-primary); color: white; font-size: 22px; border: none; }
+        .btn-danger { background-color: var(--btn-danger); color: white; border: none; }
+
+        .graph-area { flex: 1; display: none; flex-direction: column; gap: 8px; min-height: 0; }
+        .canvas-container {
+            flex: 1; background: white; border: 1px solid #dcdfe6; border-radius: 14px;
+            position: relative; overflow: hidden; touch-action: none;
+        }
+        canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+
+        .boundary-grid {
+            display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+            gap: 6px; background: #f1f3f4; padding: 8px; border-radius: 14px; flex-shrink: 0;
+        }
+        .boundary-grid.one-row { grid-template-rows: 1fr; }
+        .boundary-item {
+            display: flex; align-items: center;
+            background: white; padding: 3px 10px; border-radius: 8px; border: 1px solid #e0e6ed;
+        }
+        .boundary-item span { font-size: 11px; font-weight: 800; color: #555; width: 42px; font-family: var(--cm); }
+        .boundary-item input {
+            width: 100%; border: none; outline: none; text-align: right;
+            font-family: var(--cm); font-size: 14px; font-weight: 700;
+            background: transparent; color: var(--text-main);
+        }
+        input[type=number]::-webkit-inner-spin-button { opacity: 1; cursor: pointer; }
+
+        .root-results {
+            flex: 1; overflow-y: auto; background: white; border-radius: 14px;
+            padding: 12px; border: 1px solid #ddd;
+        }
+        .root-katex-item { padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 18px; }
+    </style>
+</head>
+<body>
+<div class="calculator">
+
+    <div class="top-nav">
+        <button id="nav-vars"  class="nav-btn" onclick="switchMode('vars')">变量</button>
+        <button id="nav-fx"    class="nav-btn" onclick="switchMode('fx')">f(x)</button>
+        <button id="nav-gx"    class="nav-btn" onclick="switchMode('gx')">g(x)</button>
+        <button id="nav-main"  class="nav-btn active" onclick="switchMode('main')">计算</button>
+        <button id="nav-plot"  class="nav-btn" onclick="switchMode('plot')">绘图</button>
+        <button id="nav-roots" class="nav-btn" onclick="switchMode('roots')">求根</button>
+    </div>
+
+    <div class="vars-panel" id="vars-panel">
+        <div class="var-row active" id="var-row-a"     onclick="selectVar('a')">
+            <div class="var-name-cell" id="vname-a"></div>
+            <div class="var-expr-cell" id="vexpr-a"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-a">0</div>
+        </div>
+        <div class="var-row" id="var-row-b"     onclick="selectVar('b')">
+            <div class="var-name-cell" id="vname-b"></div>
+            <div class="var-expr-cell" id="vexpr-b"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-b">0</div>
+        </div>
+        <div class="var-row" id="var-row-alpha"  onclick="selectVar('alpha')">
+            <div class="var-name-cell" id="vname-alpha"></div>
+            <div class="var-expr-cell" id="vexpr-alpha"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-alpha">0</div>
+        </div>
+        <div class="var-row" id="var-row-beta"   onclick="selectVar('beta')">
+            <div class="var-name-cell" id="vname-beta"></div>
+            <div class="var-expr-cell" id="vexpr-beta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-beta">0</div>
+        </div>
+        <div class="var-row" id="var-row-theta"  onclick="selectVar('theta')">
+            <div class="var-name-cell" id="vname-theta"></div>
+            <div class="var-expr-cell" id="vexpr-theta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-theta">0</div>
+        </div>
+    </div>
+
+    <div class="screen" id="main-screen">
+        <div id="single-line-display" style="font-size:20px;width:100%;overflow-x:auto;"></div>
+        <div class="plot-info-area" id="double-line-display">
+            <div class="latex-line" id="line-fx"></div>
+            <div class="latex-line" id="line-gx"></div>
+        </div>
+        <div id="calc-res-val" style="text-align:right;font-weight:800;font-size:20px;margin-top:5px;font-family:var(--cm);">0</div>
+    </div>
+
+    <div style="display:none;flex-direction:column;gap:8px;flex:1;" id="roots-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="nav-btn active" id="root-target-f" onclick="setRootTarget('f')">针对 f(x)</button>
+            <button class="nav-btn"        id="root-target-g" onclick="setRootTarget('g')">针对 g(x)</button>
+        </div>
+        <div class="boundary-grid one-row">
+            <div class="boundary-item"><span>Start</span><input type="number" id="rootX1" value="-10" step="1"></div>
+            <div class="boundary-item"><span>End</span>  <input type="number" id="rootX2" value="10"  step="1"></div>
+        </div>
+        <button class="btn-calc" style="font-size:16px;padding:8px;border-radius:12px;" onclick="calculateRoots()">执行求根</button>
+        <div class="root-results" id="root-list"></div>
+    </div>
+
+    <div class="graph-area" id="graph-area">
+        <div class="canvas-container" id="canvas-wrap">
+            <canvas id="plotCanvas"></canvas>
+        </div>
+
+        <div class="boundary-grid">
+            <div class="boundary-item"><span>X Min</span><input type="number" id="xMin" value="-10" step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>X Max</span><input type="number" id="xMax" value="10"  step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>Y Min</span><input type="number" id="yMin" value="-6"  step="1" onchange="syncFromInput()"></div>
+            <div class="boundary-item"><span>Y Max</span><input type="number" id="yMax" value="6"   step="1" onchange="syncFromInput()"></div>
+        </div>
+    </div>
+
+    <div class="keyboard" id="keyboard-area">
+        <button class="btn-var" onclick="append('a')">a</button>
+        <button class="btn-var" onclick="append('b')">b</button>
+        <button class="btn-var" onclick="append('alpha')">α</button>
+        <button class="btn-var" onclick="append('beta')">β</button>
+        <button class="btn-var" onclick="append('theta')">θ</button>
+
+        <button class="btn-func" onclick="append('f(')">f(x)</button>
+        <button class="btn-func" onclick="append('g(')">g(x)</button>
+        <button onclick="append('int(')">∫</button>
+        <button onclick="append('deriv(')">d/dx</button>
+        <button onclick="append('x')">x</button>
+
+        <button onclick="append('sqrt(')">√</button>
+        <button onclick="append('^{2}')">x²</button>
+        <button onclick="append('^{}')">xⁿ</button>
+        <button onclick="append('log10(')">log</button>
+        <button onclick="append('log(')">ln</button>
+
+        <button onclick="append('sin(')">sin</button>
+        <button onclick="append('cos(')">cos</button>
+        <button onclick="append('tan(')">tan</button>
+        <button onclick="append('pi')">π</button>
+        <button onclick="append('e')">e</button>
+
+        <button onclick="append('(')">(</button>
+        <button onclick="append(')')">)</button>
+        <button onclick="append(',')">,</button>
+        <button onclick="moveCursor(-1)">←</button>
+        <button onclick="moveCursor(1)">→</button>
+
+        <button onclick="append('7')">7</button>
+        <button onclick="append('8')">8</button>
+        <button onclick="append('9')">9</button>
+        <button class="btn-danger" onclick="deleteLast()">DEL</button>
+        <button class="btn-danger" onclick="clearAll()">AC</button>
+
+        <button onclick="append('4')">4</button>
+        <button onclick="append('5')">5</button>
+        <button onclick="append('6')">6</button>
+        <button onclick="append('*')">×</button>
+        <button onclick="append('/')">÷</button>
+
+        <button onclick="append('1')">1</button>
+        <button onclick="append('2')">2</button>
+        <button onclick="append('3')">3</button>
+        <button onclick="append('+')">+</button>
+        <button onclick="append('-')">-</button>
+
+        <button onclick="append('0')">0</button>
+        <button onclick="append('.')">.</button>
+        <button onclick="append('*10^{}')">EXP</button>
+        <button onclick="append('Ans')">Ans</button>
+        <button class="btn-calc" onclick="calculate()">=</button>
+    </div>
+</div>
+
+<script>
+let state = { mode: 'main', expr: { main:'', fx:'', gx:'', vars:'' }, rootTarget:'f' };
+let currentExpression = '';
+let cursorPos = 0;
+let lastAnswerVal = 0;
+let lastAnswerStr = '0';
+let config = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
+
+const VAR_KEYS   = ['a','b','alpha','beta','theta'];
+const VAR_LABELS = { a:'a', b:'b', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
+const varExprs   = { a:'', b:'', alpha:'', beta:'', theta:'' };
+const varVals    = { a:0,  b:0,  alpha:0,  beta:0,  theta:0  };
+let activeVar    = 'a';
+
+const singleDisplay = document.getElementById('single-line-display');
+const doubleDisplay  = document.getElementById('double-line-display');
+const resVal         = document.getElementById('calc-res-val');
+const canvas         = document.getElementById('plotCanvas');
+const ctx            = canvas.getContext('2d');
+
+(function initVarsPanel() {
+    VAR_KEYS.forEach(k => { katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false }); });
+})();
+
+// ══════════════════════════════════════════════════════════════
+//  核心：求值字符串转化（将内部的块域 {} 映射回普通括号 () 以供MathJS计算）
+// ══════════════════════════════════════════════════════════════
+function getEvalString(expr) {
+    if (!expr) return '';
+    return expr.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, '1');
+}
+
+function moveCursor(dir) {
+    cursorPos += dir;
+    if (cursorPos < 0) cursorPos = 0;
+    if (cursorPos > currentExpression.length) cursorPos = currentExpression.length;
+    renderLatex();
+}
+
+function updateVarsPanel() {
+    VAR_KEYS.forEach(k => {
+        document.getElementById('var-row-' + k).classList.toggle('active', k === activeVar);
+        const val = varVals[k];
+        const valStr = (typeof val === 'number') ? parseFloat(val.toFixed(8)).toString() : String(val);
+        document.getElementById('vval-' + k).innerText = valStr;
+        const exprPrev = varExprs[k] || '';
+        document.getElementById('vexpr-' + k).innerText = exprPrev.length > 14 ? exprPrev.slice(0, 14) + '…' : exprPrev;
+    });
+}
+
+function selectVar(k) {
+    varExprs[activeVar] = currentExpression;
+    activeVar = k;
+    currentExpression = varExprs[k];
+    cursorPos = currentExpression.length;
+    updateVarsPanel();
+    renderLatex();
+    resVal.innerText = '= ' + parseFloat(varVals[k].toFixed(8)).toString();
+}
+
+function extractCallArgs(str, name) {
+    const results = [];
+    const prefix = name + '(';
+    let i = 0;
+    while (i < str.length) {
+        const idx = str.indexOf(prefix, i);
+        if (idx === -1) break;
+        if (idx > 0 && /[a-zA-Z0-9_]/.test(str[idx - 1])) { i = idx + 1; continue; }
+        let depth = 1, j = idx + prefix.length;
+        const args = [''];
+        let argIdx = 0;
+        while (j < str.length && depth > 0) {
+            const ch = str[j];
+            if      (ch === '(')                { depth++; args[argIdx] += ch; }
+            else if (ch === ')')                { depth--; if (depth > 0) args[argIdx] += ch; }
+            else if (ch === ',' && depth === 1) { argIdx++; args.push(''); }
+            else                                { args[argIdx] += ch; }
+            j++;
+        }
+        if (depth === 0) results.push({ start:idx, end:j, args });
+        i = idx + 1;
+    }
+    return results;
+}
+
+function getCombinedScope() {
+    const scope = { a: varVals.a, b: varVals.b, alpha: varVals.alpha, beta: varVals.beta, theta: varVals.theta, Ans: lastAnswerVal };
+    try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
+    try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
+    try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
+    try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
+    return scope;
+}
+
+function simpsonIntegral(exprStr, lower, upper, scope) {
+    const code = math.compile(exprStr);
+    const n = 1000, h = (upper - lower) / n;
+    const ev = x => code.evaluate({ x, ...scope });
+    let sum = ev(lower) + ev(upper);
+    for (let i = 1; i < n; i++) sum += ev(lower + i * h) * (i % 2 === 0 ? 2 : 4);
+    return sum * h / 3;
+}
+
+function numericalDeriv(exprStr, val, scope) {
+    const h = 1e-7;
+    const code = math.compile(exprStr);
+    return (code.evaluate({ x:val+h, ...scope }) - code.evaluate({ x:val-h, ...scope })) / (2*h);
+}
+
+function evaluateWithSpecials(exprStr, scope) {
+    let str = exprStr;
+    extractCallArgs(str, 'int').reverse().forEach(({ start, end, args }) => {
+        if (args.length < 3) return;
+        const lower = math.evaluate(args[1].trim(), scope);
+        const upper = math.evaluate(args[2].trim(), scope);
+        const val   = simpsonIntegral(args[0].trim(), lower, upper, scope);
+        str = str.slice(0, start) + val + str.slice(end);
+    });
+    extractCallArgs(str, 'deriv').reverse().forEach(({ start, end, args }) => {
+        if (args.length < 2) return;
+        const inner = args[0].trim();
+        const val   = math.evaluate(args[1].trim(), scope);
+        let result;
+        try { result = math.derivative(inner, 'x').evaluate({ x:val, ...scope }); }
+        catch(e) { result = numericalDeriv(inner, val, scope); }
+        str = str.slice(0, start) + result + str.slice(end);
+    });
+    return math.evaluate(str, scope);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  渲染管线：全新定制的 MathJS Handler 以支持绝美的纯 LaTeX 塔
+// ══════════════════════════════════════════════════════════════
+function expressionToTexForDisplay(str) {
+    if (!str) return '';
+    // 用 XboxX 替用 □ 以通过 MathJS 原生语法树解析；用 () 替换 {}
+    let parseStr = str.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, 'XboxX');
+
+    try {
+        let tex = math.parse(parseStr).toTex({
+            handler: function(node, options) {
+                // 拦截指数运算，剔除自动生成的难看括号（从而形成真正的指数塔）
+                if (node.isOperatorNode && node.op === '^') {
+                    const base = node.args[0].toTex(options);
+                    let exp = node.args[1].toTex(options);
+                    if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) {
+                        exp = exp.slice(6, -7);
+                    }
+                    return `${base}^{${exp}}`;
+                }
+                // 在 AST 层面全局接管积分和求导渲染，彻底摆脱过去的字符拼接错误
+                if (node.isFunctionNode) {
+                    if (node.fn.name === 'int' && node.args.length === 3) {
+                        const a = node.args[0].toTex(options);
+                        const b = node.args[1].toTex(options);
+                        const c = node.args[2].toTex(options);
+                        return `\\int_{${b}}^{${c}} ${a} \\, dx`;
+                    }
+                    if (node.fn.name === 'deriv' && node.args.length === 2) {
+                        const a = node.args[0].toTex(options);
+                        const b = node.args[1].toTex(options);
+                        return `\\left.\\frac{d}{dx}\\left(${a}\\right)\\right|_{x=${b}}`;
+                    }
+                }
+            }
+        });
+        return tex.replace(/XboxX/g, '\\square');
+    } catch(e) {
+        // 如果在输入过程中出现语法未闭合，直接返回原生形式作为 Fallback 保底
+        return parseStr.replace(/XboxX/g, '\\square');
+    }
+}
+
+function getDisplayTex(expr, mode) {
+    let s = expr;
+    // 注入游标标记
+    if (mode === state.mode) {
+        s = s.substring(0, cursorPos) + 'XcurX' + s.substring(cursorPos);
+    }
+
+    let tex = expressionToTexForDisplay(s);
+
+    // XcurX 在 MathJS 的 AST 中可能被视为隐式乘法，前后会被打上空格或点乘。正则捕获并消除这些干扰
+    tex = tex.replace(/(?:\\cdot\s*|\s+)?XcurX(?:\s*\\cdot|\s+)?/g, '\\htmlClass{cursor-blink}{|}');
+    tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
+
+    if (mode === 'fx')   tex = 'f(x) = ' + tex;
+    if (mode === 'gx')   tex = 'g(x) = ' + tex;
+    if (mode === 'vars') tex = VAR_LABELS[activeVar] + ' = ' + tex;
+
+    return tex;
+}
+
+function renderLatex() {
+    let tex = getDisplayTex(currentExpression, state.mode);
+    katex.render(tex, singleDisplay, { displayMode:true, throwOnError:false, trust:true });
+}
+
+function updatePlotScreen() {
+    const renderNoPrefix = (id, label, exp) => {
+        let tex = '\\cdots';
+        if(exp) {
+            try { tex = expressionToTexForDisplay(exp); } catch(e) { tex = exp; }
+            tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
+        }
+        katex.render(`${label} = ${tex}`, document.getElementById(id), { throwOnError:false, trust:true });
+    };
+    renderNoPrefix('line-fx', 'f(x)', state.expr.fx);
+    renderNoPrefix('line-gx', 'g(x)', state.expr.gx);
+}
+
+function append(v) {
+    let insertStr = v;
+    let offset = v.length;
+
+    // 接管特定算符为块级输入
+    if (v === '^{}') {
+        insertStr = '^{□}';
+        offset = 2; // 光标进入花括号内的方框处
+    } else if (v === '^{2}') {
+        insertStr = '^{2}';
+        offset = 4; // 光标越过花括号到结尾
+    } else if (v === '*10^{}') {
+        insertStr = '*10^{□}';
+        offset = 5;
+    } else if (v === 'int(') {
+        insertStr = 'int(□,□,□)';
+        offset = 4;
+    } else if (v === 'deriv(') {
+        insertStr = 'deriv(□,□)';
+        offset = 6;
+    }
+
+    if (currentExpression[cursorPos] === '□') {
+        currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos + 1);
+    } else {
+        currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos);
+    }
+    cursorPos += offset;
+    renderLatex();
+}
+
+function deleteLast() {
+    if (cursorPos === 0) return;
+    let leftStr = currentExpression.substring(0, cursorPos);
+    let rightStr = currentExpression.substring(cursorPos);
+
+    // 块域收尾保护：防止从外侧误删指数块边界，如遇右边界将游标推回块域内
+    if (leftStr.endsWith('}')) {
+        cursorPos -= 1;
+        renderLatex();
+        return;
+    }
+
+    // 探测块域空载：如果为空指数块，直接全块拔除
+    if (leftStr.endsWith('^{') && rightStr.startsWith('□}')) {
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(2);
+        cursorPos -= 2;
+        renderLatex();
+        return;
+    }
+    if (leftStr.endsWith('^{') && rightStr.startsWith('}')) {
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1);
+        cursorPos -= 2;
+        renderLatex();
+        return;
+    }
+
+    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{'];
+    let deletedLen = 1;
+    let isBracketBlock = false;
+
+    for (let t of atomicTokens) {
+        if (leftStr.endsWith(t)) {
+            deletedLen = t.length;
+            if (t === '^{') isBracketBlock = true;
+            break;
+        }
+    }
+
+    if (isBracketBlock) {
+        // 解压包裹体：如果你强行从块域头部执行删除，它将脱下大括号，令其子代“掉出”到上一级
+        leftStr = leftStr.substring(0, leftStr.length - 2);
+        let depth = 1, matchIdx = -1;
+        for (let i = 0; i < rightStr.length; i++) {
+            if (rightStr[i] === '{') depth++;
+            else if (rightStr[i] === '}') depth--;
+            if (depth === 0) { matchIdx = i; break; }
+        }
+        if (matchIdx !== -1) {
+            rightStr = rightStr.substring(0, matchIdx) + rightStr.substring(matchIdx + 1);
+        }
+        currentExpression = leftStr + rightStr;
+        cursorPos -= 2;
+    } else {
+        // 普通单字/函数头删除
+        currentExpression = leftStr.substring(0, leftStr.length - deletedLen) + rightStr;
+        cursorPos -= deletedLen;
+    }
+    renderLatex();
+}
+
+function clearAll() {
+    currentExpression = '';
+    cursorPos = 0;
+    renderLatex();
+    if (state.mode === 'main') resVal.innerText = '0';
+    if (state.mode === 'vars') resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
+}
+
+function calculate() {
+    if (currentExpression.includes('□')) {
+        resVal.innerText = 'Syntax Error';
+        return;
+    }
+    const evalStr = getEvalString(currentExpression);
+    if (state.mode === 'vars') {
+        try {
+            const scope = getCombinedScope();
+            const res = evaluateWithSpecials(evalStr, scope);
+            const num = typeof res === 'number' ? res : parseFloat(math.format(res));
+            varVals[activeVar]  = num;
+            varExprs[activeVar] = currentExpression;
+            lastAnswerVal = num;
+            lastAnswerStr = math.format(res, { precision:10 });
+            resVal.innerText = '= ' + lastAnswerStr;
+            updateVarsPanel();
+        } catch(e) { resVal.innerText = 'Error'; }
+        return;
+    }
+    try {
+        const scope = getCombinedScope();
+        const res = evaluateWithSpecials(evalStr, scope);
+        lastAnswerVal = typeof res === 'number' ? res : parseFloat(math.format(res));
+        lastAnswerStr = math.format(res, { precision:10 });
+        resVal.innerText = '= ' + lastAnswerStr;
+    } catch(e) { resVal.innerText = 'Error'; }
+}
+
+function switchMode(m) {
+    if (state.mode === 'vars') {
+        varExprs[activeVar] = currentExpression;
+        state.expr.vars = currentExpression;
+    } else {
+        state.expr[state.mode] = currentExpression;
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + m).classList.add('active');
+    state.mode = m;
+
+    if (m === 'vars') { currentExpression = varExprs[activeVar]; }
+    else { currentExpression = state.expr[m] || ''; }
+
+    cursorPos = currentExpression.length;
+
+    const isVars  = m === 'vars';
+    const isPlot  = m === 'plot';
+    const isRoots = m === 'roots';
+
+    document.getElementById('main-screen').style.display    = isRoots ? 'none'  : 'flex';
+    document.getElementById('keyboard-area').style.display  = (isPlot||isRoots) ? 'none' : 'grid';
+    document.getElementById('graph-area').style.display     = isPlot  ? 'flex'  : 'none';
+    document.getElementById('roots-panel').style.display    = isRoots ? 'flex'  : 'none';
+    document.getElementById('vars-panel').style.display     = isVars  ? 'flex'  : 'none';
+
+    if (isPlot) {
+        singleDisplay.style.display = 'none';
+        doubleDisplay.style.display = 'flex';
+        resVal.style.display        = 'none';
+        updatePlotScreen();
+        setTimeout(() => { initCanvas(); drawGraph(); }, 50);
+    } else if (!isRoots) {
+        singleDisplay.style.display = 'block';
+        doubleDisplay.style.display = 'none';
+        resVal.style.display        = 'block';
+        if (m === 'main')  resVal.innerText = '= ' + lastAnswerStr;
+        else if (isVars)   { resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8)); updateVarsPanel(); }
+        else               resVal.innerText = m + ' 模式';
+        renderLatex();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  原有绘图与求根业务线（现完全接入统一的 evalStr 化机制）
+// ══════════════════════════════════════════════════════════════
+function setRootTarget(t) {
+    state.rootTarget = t;
+    document.getElementById('root-target-f').classList.toggle('active', t==='f');
+    document.getElementById('root-target-g').classList.toggle('active', t==='g');
+}
+
+function initCanvas() {
+    const wrap=document.getElementById('canvas-wrap');
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=wrap.clientWidth*dpr;
+    canvas.height=wrap.clientHeight*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function makeMappers() {
+    const dpr=window.devicePixelRatio||1;
+    const w=canvas.width/dpr, h=canvas.height/dpr;
+    return {
+        w, h,
+        mX: x=>((x-config.xMin)/(config.xMax-config.xMin))*w,
+        mY: y=>h-((y-config.yMin)/(config.yMax-config.yMin))*h,
+        invX: px=>config.xMin+(px/w)*(config.xMax-config.xMin),
+        invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin),
+    };
+}
+
+function bisection(f, a, b) {
+    if (Math.abs(f(a)) < 1e-12) return a;
+    if (Math.abs(f(b)) < 1e-12) return b;
+    for (let i = 0; i < 60; i++) {
+        const m = (a + b) / 2;
+        if (Math.abs(f(m)) < 1e-12) return m;
+        if (f(a) * f(m) <= 0) b = m;
+        else a = m;
+    }
+    return (a + b) / 2;
+}
+
+function calculateRoots() {
+    const x1 = parseFloat(document.getElementById('rootX1').value);
+    const x2 = parseFloat(document.getElementById('rootX2').value);
+    const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
+    const listEl = document.getElementById('root-list');
+    listEl.innerHTML = '';
+
+    if (!exp) { listEl.innerText = '函数未定义'; return; }
+
+    try {
+        const scope = getCombinedScope();
+        const compiled = math.compile(getEvalString(exp));
+        const fn = v => compiled.evaluate({ x: v, ...scope });
+
+        const steps = 800;
+        const delta = (x2 - x1) / steps;
+        let roots = [];
+
+        for (let i = 0; i <= steps; i++) {
+            const x = x1 + i * delta;
+            const fx = fn(x);
+            if (Math.abs(fx) < 1e-8) {
+                roots.push(x.toFixed(6));
+            }
+            if (i > 0) {
+                const prevX = x1 + (i - 1) * delta;
+                const prevFx = fn(prevX);
+                if (prevFx * fx <= 0) {
+                    const refinedRoots = refinedSearch(fn, prevX, x);
+                    roots.push(...refinedRoots);
+                }
+            }
+        }
+
+        if (roots.length === 0) {
+            roots = findRootsWithDerivative(fn, x1, x2, steps);
+        }
+
+        roots = [...new Set(roots.map(Number))]
+            .filter(r => !isNaN(r) && Math.abs(fn(r)) < 1e-6)
+            .sort((a, b) => a - b)
+            .map(r => r.toFixed(6));
+
+        if (roots.length === 0) {
+            listEl.innerText = '未发现实根';
+        } else {
+            roots.forEach((r, idx) => {
+                const div = document.createElement('div');
+                div.className = 'root-katex-item';
+                listEl.appendChild(div);
+                katex.render(`x_{${idx + 1}} = ${r}`, div);
+            });
+        }
+    } catch (e) {
+        listEl.innerText = '计算出错: ' + e.message;
+    }
+}
+
+function refinedSearch(f, a, b, depth = 4) {
+    const roots = [];
+    const stack = [{ a, b, depth }];
+
+    while (stack.length > 0) {
+        const { a, b, depth } = stack.pop();
+        const fa = f(a);
+        const fb = f(b);
+
+        if (Math.abs(fa) < 1e-12) { roots.push(a); continue; }
+        if (Math.abs(fb) < 1e-12) { roots.push(b); continue; }
+
+        if (fa * fb > 0 && Math.abs(fa) > 1e-8 && Math.abs(fb) > 1e-8) {
+            for (let i = 1; i < 5; i++) {
+                const x = a + (b - a) * i / 5;
+                if (Math.abs(f(x)) < 1e-8) roots.push(x);
+            }
+            continue;
+        }
+
+        const root = bisection(f, a, b);
+        if (Math.abs(f(root)) < 1e-6) { roots.push(root); }
+
+        if (depth > 0 && Math.abs(b - a) > 1e-6) {
+            const mid = (a + b) / 2;
+            if (fa * f(mid) <= 0) stack.push({ a, b: mid, depth: depth - 1 });
+            if (f(mid) * fb <= 0) stack.push({ a: mid, b, depth: depth - 1 });
+        }
+    }
+    return [...new Set(roots.map(r => Number(r.toFixed(6))))];
+}
+
+function findRootsWithDerivative(f, a, b, steps = 200) {
+    const roots = [];
+    const delta = (b - a) / steps;
+    for (let i = 0; i <= steps; i++) {
+        const x = a + i * delta;
+        const h = 1e-6;
+        const derivative = (f(x + h) - f(x - h)) / (2 * h);
+
+        if (Math.abs(derivative) < 1e-4) {
+            if (Math.abs(f(x)) < 1e-6) {
+                roots.push(x);
+            } else {
+                const left = Math.max(a, x - delta);
+                const right = Math.min(b, x + delta);
+                const refined = refinedSearch(f, left, right, 3);
+                roots.push(...refined);
+            }
+        }
+    }
+    return roots;
+}
+
+function drawGraph() {
+    const {w,h,mX,mY}=makeMappers();
+    ctx.clearRect(0,0,w,h);
+
+    ctx.strokeStyle='#f0f0f0';ctx.lineWidth=1;ctx.beginPath();
+    for(let x=Math.floor(config.xMin);x<=config.xMax;x++){ctx.moveTo(mX(x),0);ctx.lineTo(mX(x),h);}
+    for(let y=Math.floor(config.yMin);y<=config.yMax;y++){ctx.moveTo(0,mY(y));ctx.lineTo(w,mY(y));}
+    ctx.stroke();
+
+    ctx.strokeStyle='#ccc';ctx.lineWidth=1.5;ctx.beginPath();
+    ctx.moveTo(0,mY(0));ctx.lineTo(w,mY(0));
+    ctx.moveTo(mX(0),0);ctx.lineTo(mX(0),h);
+    ctx.stroke();
+
+    const scope=getCombinedScope();
+    [['fx','#0984e3'],['gx','#e17055']].forEach(([key,color])=>{
+        if(!state.expr[key])return;
+        try{
+            const compiled=math.compile(getEvalString(state.expr[key]));
+            ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
+            let first=true;
+            for(let i=0;i<=w;i+=1.5){
+                const x=config.xMin+(i/w)*(config.xMax-config.xMin);
+                const y=compiled.evaluate({x,...scope});
+                if(typeof y==='number'&&isFinite(y)){
+                    const py=mY(y);
+                    if(first){ctx.moveTo(i,py);first=false;}else{ctx.lineTo(i,py);}
+                }else{first=true;}
+            }
+            ctx.stroke();
+        }catch(e){}
+    });
+}
+
+function drawTracker(px,py) {
+    drawGraph();
+    const {w,h,mX,mY,invX}=makeMappers();
+    const x=invX(px);
+    ctx.save();
+
+    ctx.strokeStyle='rgba(80,80,80,0.3)';ctx.lineWidth=1;
+    ctx.setLineDash([5,5]);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,h);ctx.stroke();
+    ctx.setLineDash([]);
+
+    const scope=getCombinedScope();
+    const hits=[];
+    [['fx','#0984e3','f'],['gx','#e17055','g']].forEach(([key,color,label])=>{
+        if(!state.expr[key])return;
+        try{
+            const y=math.compile(getEvalString(state.expr[key])).evaluate({x,...scope});
+            if(typeof y!=='number'||!isFinite(y))return;
+            const dotY=mY(y);
+            ctx.beginPath();ctx.arc(px,dotY,6,0,Math.PI*2);
+            ctx.fillStyle='white';ctx.fill();
+            ctx.beginPath();ctx.arc(px,dotY,4.5,0,Math.PI*2);
+            ctx.fillStyle=color;ctx.fill();
+            hits.push({label,y,color});
+        }catch(e){}
+    });
+
+    if(!hits.length){ctx.restore();return;}
+
+    const xStr=parseFloat(x.toFixed(5)).toString();
+    const lines=[
+        {text:`x = ${xStr}`,color:'#444'},
+        ...hits.map(h=>({text:`${h.label}(x) = ${parseFloat(h.y.toFixed(5))}`,color:h.color}))
+    ];
+    const fSize=11.5,lineH=fSize+6,padX=10,padY=7,boxW=162;
+    const boxH=lines.length*lineH+padY*2;
+    let bx=px+16;if(bx+boxW>w-4)bx=px-boxW-16;
+    let by=py-boxH/2;if(by<4)by=4;if(by+boxH>h-4)by=h-boxH-4;
+
+    const r=7;
+    ctx.fillStyle='rgba(255,255,255,0.96)';
+    ctx.strokeStyle='rgba(0,0,0,0.11)';ctx.lineWidth=1;
+    ctx.shadowColor='rgba(0,0,0,0.07)';ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(bx+r,by);ctx.lineTo(bx+boxW-r,by);
+    ctx.quadraticCurveTo(bx+boxW,by,bx+boxW,by+r);
+    ctx.lineTo(bx+boxW,by+boxH-r);
+    ctx.quadraticCurveTo(bx+boxW,by+boxH,bx+boxW-r,by+boxH);
+    ctx.lineTo(bx+r,by+boxH);
+    ctx.quadraticCurveTo(bx,by+boxH,bx,by+boxH-r);
+    ctx.lineTo(bx,by+r);
+    ctx.quadraticCurveTo(bx,by,bx+r,by);
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;
+
+    ctx.font=`${fSize}px ${CM_FONT}`;ctx.textBaseline='middle';
+    lines.forEach((line,i)=>{
+        ctx.fillStyle=line.color;
+        ctx.fillText(line.text,bx+padX,by+padY+lineH*i+lineH/2);
+    });
+    ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  坐标辅助
+// ══════════════════════════════════════════════════════════════
+function canvasPixelCoords(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+    const w    = canvas.width / dpr, h = canvas.height / dpr;
+    return {
+        px: (clientX - rect.left) * (w / rect.width),
+        py: (clientY - rect.top)  * (h / rect.height),
+        w, h, rect
+    };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  鼠标事件（桌面端：hover 追踪 + 滚轮缩放）
+// ══════════════════════════════════════════════════════════════
+canvas.addEventListener('mousemove', e => {
+    const { px, py } = canvasPixelCoords(e.clientX, e.clientY);
+    drawTracker(px, py);
+});
+
+canvas.addEventListener('mouseleave', () => drawGraph());
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.12 : 0.9;
+    const dx = (config.xMax - config.xMin) * (factor - 1);
+    const dy = (config.yMax - config.yMin) * (factor - 1);
+    config.xMin -= dx / 2; config.xMax += dx / 2;
+    config.yMin -= dy / 2; config.yMax += dy / 2;
+    syncRangeInputsFromConfig(); drawGraph();
+}, { passive: false });
+
+// ══════════════════════════════════════════════════════════════
+//  触摸手势（手机端）
+//  · 单指拖动 → 平移视图
+//  · 双指捏合/张开 → 缩放（横向改 X 轴，纵向改 Y 轴，可各自独立）
+// ══════════════════════════════════════════════════════════════
+let touch1 = null, touch2 = null;  // 上一帧的触摸快照
+
+function getTouchById(list, id) {
+    for (const t of list) if (t.identifier === id) return t;
+    return null;
+}
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touch2 = null;
+    } else if (e.touches.length >= 2) {
+        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touch2 = { id: e.touches[1].identifier, x: e.touches[1].clientX, y: e.touches[1].clientY };
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+
+    if (e.touches.length === 1 && touch1 && !touch2) {
+        // ── 单指平移 ──
+        const t = getTouchById(e.touches, touch1.id) || e.touches[0];
+        const dx = (t.clientX - touch1.x) / rect.width  * (config.xMax - config.xMin);
+        const dy = (t.clientY - touch1.y) / rect.height * (config.yMax - config.yMin);
+        config.xMin -= dx; config.xMax -= dx;
+        config.yMin += dy; config.yMax += dy;
+        touch1 = { id: t.identifier, x: t.clientX, y: t.clientY };
+        syncRangeInputsFromConfig(); drawGraph();
+
+    } else if (e.touches.length >= 2 && touch1 && touch2) {
+        // ── 双指捏合缩放 ──
+        const ta = getTouchById(e.touches, touch1.id) || e.touches[0];
+        const tb = getTouchById(e.touches, touch2.id) || e.touches[1];
+
+        // 上一帧两指间距（水平/垂直分量分开，实现独立轴向缩放）
+        const prevDx = Math.abs(touch1.x - touch2.x);
+        const prevDy = Math.abs(touch1.y - touch2.y);
+        const curDx  = Math.abs(ta.clientX - tb.clientX);
+        const curDy  = Math.abs(ta.clientY - tb.clientY);
+
+        // 以两指中心为缩放锚点
+        const midClientX = (ta.clientX + tb.clientX) / 2;
+        const midClientY = (ta.clientY + tb.clientY) / 2;
+        const anchorRatioX = (midClientX - rect.left) / rect.width;
+        const anchorRatioY = (midClientY - rect.top)  / rect.height;
+        const anchorMathX  = config.xMin + anchorRatioX * (config.xMax - config.xMin);
+        const anchorMathY  = config.yMax - anchorRatioY * (config.yMax - config.yMin);
+
+        // X 轴缩放（水平捏合）
+        if (prevDx > 5 && curDx > 5) {
+            const scaleX = prevDx / curDx;  // <1 放大，>1 缩小
+            const xRange = (config.xMax - config.xMin) * scaleX;
+            config.xMin = anchorMathX - anchorRatioX * xRange;
+            config.xMax = config.xMin + xRange;
+        }
+
+        // Y 轴缩放（垂直捏合）
+        if (prevDy > 5 && curDy > 5) {
+            const scaleY = prevDy / curDy;
+            const yRange = (config.yMax - config.yMin) * scaleY;
+            config.yMax = anchorMathY + anchorRatioY * yRange;
+            config.yMin = config.yMax - yRange;
+        }
+
+        // 同时处理双指整体平移（两指中点的移动）
+        const prevMidX = (touch1.x + touch2.x) / 2;
+        const prevMidY = (touch1.y + touch2.y) / 2;
+        const panDx = (midClientX - prevMidX) / rect.width  * (config.xMax - config.xMin);
+        const panDy = (midClientY - prevMidY) / rect.height * (config.yMax - config.yMin);
+        config.xMin -= panDx; config.xMax -= panDx;
+        config.yMin += panDy; config.yMax += panDy;
+
+        touch1 = { id: ta.identifier, x: ta.clientX, y: ta.clientY };
+        touch2 = { id: tb.identifier, x: tb.clientX, y: tb.clientY };
+        syncRangeInputsFromConfig(); drawGraph();
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    // 重新记录剩余触点
+    if (e.touches.length === 0) {
+        touch1 = null; touch2 = null;
+    } else if (e.touches.length === 1) {
+        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touch2 = null;
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', () => { touch1 = null; touch2 = null; });
+
+// ══════════════════════════════════════════════════════════════
+//  XY 数值输入框同步
+// ══════════════════════════════════════════════════════════════
+function syncRangeInputsFromConfig() {
+    document.getElementById('xMin').value = +config.xMin.toFixed(3);
+    document.getElementById('xMax').value = +config.xMax.toFixed(3);
+    document.getElementById('yMin').value = +config.yMin.toFixed(3);
+    document.getElementById('yMax').value = +config.yMax.toFixed(3);
+}
+
+function syncFromInput() {
+    config.xMin = parseFloat(document.getElementById('xMin').value);
+    config.xMax = parseFloat(document.getElementById('xMax').value);
+    config.yMin = parseFloat(document.getElementById('yMin').value);
+    config.yMax = parseFloat(document.getElementById('yMax').value);
+    drawGraph();
+}
+</script>
+</body>
+</html>
