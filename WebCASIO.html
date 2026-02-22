@@ -31,7 +31,6 @@
             min-height: 100vh; margin: 0; font-family: var(--cm);
         }
 
-        /* ── 11:7 比例 440 × 692 ── */
         .calculator {
             background-color: var(--calc-bg);
             width: 400px; height: 692px;
@@ -43,7 +42,6 @@
             overflow-x: hidden;
         }
 
-        /* ── 导航栏（现在 6 列）── */
         .top-nav { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; flex-shrink: 0; }
         .nav-btn {
             border: 1px solid #e0e6ed; background-color: #f8fafc;
@@ -53,7 +51,6 @@
         }
         .nav-btn.active { background-color: var(--btn-primary); color: white; border-color: var(--btn-primary); }
 
-        /* ── 屏幕 ── */
         .screen {
             background-color: var(--screen-bg); border-radius: 16px;
             border: 1px solid #dcdfe6; padding: 10px 14px;
@@ -66,10 +63,14 @@
             font-size: 17px; padding-bottom: 2px; border-bottom: 1px solid #f3f3f3;
         }
 
-        /* ── 变量面板 ── */
-        .vars-panel {
-            display: none; flex-direction: column; gap: 5px; flex-shrink: 0;
+        @keyframes blink { 50% { opacity: 0; } }
+        .cursor-blink { 
+            animation: blink 1.2s step-end infinite; 
+            color: var(--btn-primary); 
+            font-weight: 800; 
         }
+
+        .vars-panel { display: none; flex-direction: column; gap: 5px; flex-shrink: 0; }
         .var-row {
             display: flex; align-items: center; gap: 10px;
             background: #f8fafc; border: 1.5px solid #e0e6ed;
@@ -98,7 +99,6 @@
             white-space: nowrap; text-overflow: ellipsis;
         }
 
-        /* ── 键盘 ── */
         .keyboard { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; min-height: 0; }
         button {
             border: 1px solid #eaedf0; border-radius: 12px; background-color: #fff;
@@ -111,7 +111,6 @@
         .btn-calc   { background-color: var(--btn-primary); color: white; font-size: 22px; border: none; }
         .btn-danger { background-color: var(--btn-danger); color: white; border: none; }
 
-        /* ── 绘图区 ── */
         .graph-area { flex: 1; display: none; flex-direction: column; gap: 8px; min-height: 0; }
         .canvas-container {
             flex: 1; background: white; border: 1px solid #dcdfe6; border-radius: 14px;
@@ -119,10 +118,9 @@
         }
         canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
 
-        /* ── 移动按钮 + 滑动条行（溢出修复）── */
         .plot-controls {
             display: flex; align-items: center; gap: 7px;
-            flex-shrink: 0; height: 34px; overflow: hidden; /* 防止溢出 */
+            flex-shrink: 0; height: 34px; overflow: hidden;
         }
         .move-btn {
             height: 34px; padding: 0 10px; font-size: 12px; font-family: var(--cm);
@@ -137,38 +135,27 @@
         }
         .slider-group {
             display: flex; align-items: center; gap: 4px;
-            flex: 1; min-width: 0;                   /* ← 溢出修复关键 */
+            flex: 1; min-width: 0;
             background: #f8fafc; border: 1px solid #e0e6ed;
             border-radius: 9px; padding: 0 8px; height: 34px;
-            overflow: hidden;                         /* ← 溢出修复关键 */
+            overflow: hidden;
         }
         .slider-group span {
             font-size: 11px; font-weight: 800; color: #666;
             white-space: nowrap; font-family: var(--cm); flex-shrink: 0;
         }
         .slider-group input[type=range] {
-            flex: 1; min-width: 0;                   /* ← 溢出修复关键 */
-            margin: 0; cursor: pointer;
+            flex: 1; min-width: 0; margin: 0; cursor: pointer;
             accent-color: var(--btn-primary);
             -webkit-appearance: none; appearance: none; background: transparent;
         }
-        .slider-group input[type=range]::-webkit-slider-runnable-track {
-            height: 4px; border-radius: 2px; background: #d1d9e0;
-        }
+        .slider-group input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #d1d9e0; }
         .slider-group input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; appearance: none;
             width: 14px; height: 14px; border-radius: 50%;
             background: var(--btn-primary); margin-top: -5px; cursor: pointer;
         }
-        .slider-group input[type=range]::-moz-range-track {
-            height: 4px; border-radius: 2px; background: #d1d9e0;
-        }
-        .slider-group input[type=range]::-moz-range-thumb {
-            width: 14px; height: 14px; border-radius: 50%;
-            background: var(--btn-primary); border: none; cursor: pointer;
-        }
 
-        /* ── 坐标范围输入面板 ── */
         .boundary-grid {
             display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
             gap: 6px; background: #f1f3f4; padding: 8px; border-radius: 14px; flex-shrink: 0;
@@ -186,7 +173,6 @@
         }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; cursor: pointer; }
 
-        /* ── 求根面板 ── */
         .root-results {
             flex: 1; overflow-y: auto; background: white; border-radius: 14px;
             padding: 12px; border: 1px solid #ddd;
@@ -197,7 +183,6 @@
 <body>
 <div class="calculator">
 
-    <!-- 导航（6列：变量 f(x) g(x) 计算 绘图 求根）-->
     <div class="top-nav">
         <button id="nav-vars"  class="nav-btn" onclick="switchMode('vars')">变量</button>
         <button id="nav-fx"    class="nav-btn" onclick="switchMode('fx')">f(x)</button>
@@ -207,41 +192,29 @@
         <button id="nav-roots" class="nav-btn" onclick="switchMode('roots')">求根</button>
     </div>
 
-    <!-- 变量赋值面板（vars 模式时显示，在 screen 上方）-->
     <div class="vars-panel" id="vars-panel">
         <div class="var-row active" id="var-row-a"     onclick="selectVar('a')">
             <div class="var-name-cell" id="vname-a"></div>
-            <div class="var-expr-cell" id="vexpr-a"></div>
-            <span class="var-eq">=</span>
-            <div class="var-val-cell"  id="vval-a">0</div>
+            <div class="var-expr-cell" id="vexpr-a"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-a">0</div>
         </div>
         <div class="var-row" id="var-row-b"     onclick="selectVar('b')">
             <div class="var-name-cell" id="vname-b"></div>
-            <div class="var-expr-cell" id="vexpr-b"></div>
-            <span class="var-eq">=</span>
-            <div class="var-val-cell"  id="vval-b">0</div>
+            <div class="var-expr-cell" id="vexpr-b"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-b">0</div>
         </div>
         <div class="var-row" id="var-row-alpha"  onclick="selectVar('alpha')">
             <div class="var-name-cell" id="vname-alpha"></div>
-            <div class="var-expr-cell" id="vexpr-alpha"></div>
-            <span class="var-eq">=</span>
-            <div class="var-val-cell"  id="vval-alpha">0</div>
+            <div class="var-expr-cell" id="vexpr-alpha"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-alpha">0</div>
         </div>
         <div class="var-row" id="var-row-beta"   onclick="selectVar('beta')">
             <div class="var-name-cell" id="vname-beta"></div>
-            <div class="var-expr-cell" id="vexpr-beta"></div>
-            <span class="var-eq">=</span>
-            <div class="var-val-cell"  id="vval-beta">0</div>
+            <div class="var-expr-cell" id="vexpr-beta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-beta">0</div>
         </div>
         <div class="var-row" id="var-row-theta"  onclick="selectVar('theta')">
             <div class="var-name-cell" id="vname-theta"></div>
-            <div class="var-expr-cell" id="vexpr-theta"></div>
-            <span class="var-eq">=</span>
-            <div class="var-val-cell"  id="vval-theta">0</div>
+            <div class="var-expr-cell" id="vexpr-theta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-theta">0</div>
         </div>
     </div>
 
-    <!-- 主屏幕 -->
     <div class="screen" id="main-screen">
         <div id="single-line-display" style="font-size:20px;width:100%;overflow-x:auto;"></div>
         <div class="plot-info-area" id="double-line-display">
@@ -251,7 +224,6 @@
         <div id="calc-res-val" style="text-align:right;font-weight:800;font-size:20px;margin-top:5px;font-family:var(--cm);">0</div>
     </div>
 
-    <!-- 求根面板 -->
     <div style="display:none;flex-direction:column;gap:8px;flex:1;" id="roots-panel">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <button class="nav-btn active" id="root-target-f" onclick="setRootTarget('f')">针对 f(x)</button>
@@ -265,24 +237,15 @@
         <div class="root-results" id="root-list"></div>
     </div>
 
-    <!-- 绘图区 -->
     <div class="graph-area" id="graph-area">
         <div class="canvas-container" id="canvas-wrap">
             <canvas id="plotCanvas"></canvas>
         </div>
-        <!-- 移动按钮 + X/Y 缩放滑动条 -->
         <div class="plot-controls">
             <button id="move-btn" class="move-btn" onclick="toggleMoveMode()">⊕ 移动</button>
-            <div class="slider-group">
-                <span>X</span>
-                <input type="range" id="xScaleSlider" min="0.5" max="200" step="0.1" value="20" oninput="onXSlider()">
-            </div>
-            <div class="slider-group">
-                <span>Y</span>
-                <input type="range" id="yScaleSlider" min="0.3" max="120" step="0.1" value="12" oninput="onYSlider()">
-            </div>
+            <div class="slider-group"><span>X</span><input type="range" id="xScaleSlider" min="0.5" max="200" step="0.1" value="20" oninput="onXSlider()"></div>
+            <div class="slider-group"><span>Y</span><input type="range" id="yScaleSlider" min="0.3" max="120" step="0.1" value="12" oninput="onYSlider()"></div>
         </div>
-        <!-- XY 定量输入框 -->
         <div class="boundary-grid">
             <div class="boundary-item"><span>X Min</span><input type="number" id="xMin" value="-10" step="1" onchange="syncFromInput()"></div>
             <div class="boundary-item"><span>X Max</span><input type="number" id="xMax" value="10"  step="1" onchange="syncFromInput()"></div>
@@ -291,87 +254,76 @@
         </div>
     </div>
 
-    <!-- 键盘（顶部新增变量行）-->
     <div class="keyboard" id="keyboard-area">
-
-        <!-- 行 0（新增）：变量 a b α β θ -->
         <button class="btn-var" onclick="append('a')">a</button>
         <button class="btn-var" onclick="append('b')">b</button>
         <button class="btn-var" onclick="append('alpha')">α</button>
         <button class="btn-var" onclick="append('beta')">β</button>
         <button class="btn-var" onclick="append('theta')">θ</button>
 
-        <!-- 行 1：f(x) g(x) ∫ d/dx x -->
-        <button class="btn-func" onclick="append('f(x)')">f(x)</button>
-        <button class="btn-func" onclick="append('g(x)')">g(x)</button>
+        <button class="btn-func" onclick="append('f(')">f(x)</button>
+        <button class="btn-func" onclick="append('g(')">g(x)</button>
         <button onclick="append('int(')">∫</button>
         <button onclick="append('deriv(')">d/dx</button>
         <button onclick="append('x')">x</button>
 
-        <!-- 行 2：√ x² xⁿ log ln -->
         <button onclick="append('sqrt(')">√</button>
-        <button onclick="append('^2')">x²</button>
-        <button onclick="append('^')">xⁿ</button>
+        <button onclick="append('^{2}')">x²</button>
+        <button onclick="append('^{}')">xⁿ</button>
         <button onclick="append('log10(')">log</button>
         <button onclick="append('log(')">ln</button>
 
-        <!-- 行 3：sin cos tan π e -->
         <button onclick="append('sin(')">sin</button>
         <button onclick="append('cos(')">cos</button>
         <button onclick="append('tan(')">tan</button>
         <button onclick="append('pi')">π</button>
         <button onclick="append('e')">e</button>
 
-        <!-- 行 4：( ) , DEL AC -->
         <button onclick="append('(')">(</button>
         <button onclick="append(')')">)</button>
         <button onclick="append(',')">,</button>
-        <button class="btn-danger" onclick="deleteLast()">DEL</button>
-        <button class="btn-danger" onclick="clearAll()">AC</button>
+        <button onclick="moveCursor(-1)">←</button>
+        <button onclick="moveCursor(1)">→</button>
 
-        <!-- 行 5：7 8 9 × ÷ -->
         <button onclick="append('7')">7</button>
         <button onclick="append('8')">8</button>
         <button onclick="append('9')">9</button>
-        <button onclick="append('*')">×</button>
-        <button onclick="append('/')">÷</button>
+        <button class="btn-danger" onclick="deleteLast()">DEL</button>
+        <button class="btn-danger" onclick="clearAll()">AC</button>
 
-        <!-- 行 6：4 5 6 + - -->
         <button onclick="append('4')">4</button>
         <button onclick="append('5')">5</button>
         <button onclick="append('6')">6</button>
-        <button onclick="append('+')">+</button>
-        <button onclick="append('-')">-</button>
+        <button onclick="append('*')">×</button>
+        <button onclick="append('/')">÷</button>
 
-        <!-- 行 7：1 2 3 Ans = -->
         <button onclick="append('1')">1</button>
         <button onclick="append('2')">2</button>
         <button onclick="append('3')">3</button>
+        <button onclick="append('+')">+</button>
+        <button onclick="append('-')">-</button>
+
+        <button onclick="append('0')">0</button>
+        <button onclick="append('.')">.</button>
+        <button onclick="append('*10^{}')">EXP</button>
         <button onclick="append('Ans')">Ans</button>
         <button class="btn-calc" onclick="calculate()">=</button>
-
-        <!-- 行 8：0 . EXP -->
-        <button style="grid-column:span 2" onclick="append('0')">0</button>
-        <button onclick="append('.')">.</button>
-        <button style="grid-column:span 2" onclick="append('*10^')">EXP</button>
     </div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-//  全局状态
-// ══════════════════════════════════════════════════════════════
 let state = { mode: 'main', expr: { main:'', fx:'', gx:'', vars:'' }, rootTarget:'f' };
-let lastAnswer = '0', currentExpression = '';
+let currentExpression = '';
+let cursorPos = 0; 
+let lastAnswerVal = 0; 
+let lastAnswerStr = '0';
 let config = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
 let moveMode = false;
 
-// ── 变量系统 ──
 const VAR_KEYS   = ['a','b','alpha','beta','theta'];
 const VAR_LABELS = { a:'a', b:'b', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
-const VAR_DISP   = { a:'a', b:'b', alpha:'α', beta:'β', theta:'θ' };
-const varExprs   = { a:'', b:'', alpha:'', beta:'', theta:'' };  // 每个变量的输入表达式
-const varVals    = { a:0,  b:0,  alpha:0,  beta:0,  theta:0  };  // 每个变量的数值
+const varExprs   = { a:'', b:'', alpha:'', beta:'', theta:'' };  
+const varVals    = { a:0,  b:0,  alpha:0,  beta:0,  theta:0  };  
 let activeVar    = 'a';
 
 const singleDisplay = document.getElementById('single-line-display');
@@ -379,50 +331,47 @@ const doubleDisplay  = document.getElementById('double-line-display');
 const resVal         = document.getElementById('calc-res-val');
 const canvas         = document.getElementById('plotCanvas');
 const ctx            = canvas.getContext('2d');
-const CM_FONT        = "'Computer Modern Serif', 'CMU Serif', Georgia, serif";
 
-// ── 初始化变量面板的静态部分（KaTeX 变量名）──
 (function initVarsPanel() {
-    VAR_KEYS.forEach(k => {
-        katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false });
-    });
+    VAR_KEYS.forEach(k => { katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false }); });
 })();
 
 // ══════════════════════════════════════════════════════════════
-//  变量面板：更新显示
+//  核心：求值字符串转化（将内部的块域 {} 映射回普通括号 () 以供MathJS计算）
 // ══════════════════════════════════════════════════════════════
+function getEvalString(expr) {
+    if (!expr) return '';
+    return expr.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, '1');
+}
+
+function moveCursor(dir) {
+    cursorPos += dir;
+    if (cursorPos < 0) cursorPos = 0;
+    if (cursorPos > currentExpression.length) cursorPos = currentExpression.length;
+    renderLatex();
+}
+
 function updateVarsPanel() {
     VAR_KEYS.forEach(k => {
-        // 激活行高亮
         document.getElementById('var-row-' + k).classList.toggle('active', k === activeVar);
-        // 当前值
         const val = varVals[k];
-        const valStr = (typeof val === 'number')
-            ? parseFloat(val.toFixed(8)).toString()
-            : String(val);
+        const valStr = (typeof val === 'number') ? parseFloat(val.toFixed(8)).toString() : String(val);
         document.getElementById('vval-' + k).innerText = valStr;
-        // 表达式预览（灰色小字）
         const exprPrev = varExprs[k] || '';
-        document.getElementById('vexpr-' + k).innerText = exprPrev.length > 14
-            ? exprPrev.slice(0, 14) + '…'
-            : exprPrev;
+        document.getElementById('vexpr-' + k).innerText = exprPrev.length > 14 ? exprPrev.slice(0, 14) + '…' : exprPrev;
     });
 }
 
-// 切换活跃变量
 function selectVar(k) {
-    // 先保存当前变量的表达式
     varExprs[activeVar] = currentExpression;
     activeVar = k;
     currentExpression = varExprs[k];
+    cursorPos = currentExpression.length;
     updateVarsPanel();
     renderLatex();
     resVal.innerText = '= ' + parseFloat(varVals[k].toFixed(8)).toString();
 }
 
-// ══════════════════════════════════════════════════════════════
-//  括号计数参数提取
-// ══════════════════════════════════════════════════════════════
 function extractCallArgs(str, name) {
     const results = [];
     const prefix = name + '(';
@@ -430,7 +379,7 @@ function extractCallArgs(str, name) {
     while (i < str.length) {
         const idx = str.indexOf(prefix, i);
         if (idx === -1) break;
-        if (idx > 0 && /\w/.test(str[idx - 1])) { i = idx + 1; continue; }
+        if (idx > 0 && /[a-zA-Z0-9_]/.test(str[idx - 1])) { i = idx + 1; continue; }
         let depth = 1, j = idx + prefix.length;
         const args = [''];
         let argIdx = 0;
@@ -448,29 +397,15 @@ function extractCallArgs(str, name) {
     return results;
 }
 
-// ══════════════════════════════════════════════════════════════
-//  完整 scope（变量值 + f/g 函数定义，双遍写入支持互相嵌套）
-// ══════════════════════════════════════════════════════════════
 function getCombinedScope() {
-    // 注入用户变量值
-    const scope = {
-        a:     varVals.a,
-        b:     varVals.b,
-        alpha: varVals.alpha,
-        beta:  varVals.beta,
-        theta: varVals.theta,
-    };
-    // 注入 f(x)、g(x)（双遍写入保证互相嵌套）
-    try { if (state.expr.fx) math.evaluate(`f(x) = ${state.expr.fx}`, scope); } catch(e) {}
-    try { if (state.expr.gx) math.evaluate(`g(x) = ${state.expr.gx}`, scope); } catch(e) {}
-    try { if (state.expr.fx) math.evaluate(`f(x) = ${state.expr.fx}`, scope); } catch(e) {}
-    try { if (state.expr.gx) math.evaluate(`g(x) = ${state.expr.gx}`, scope); } catch(e) {}
+    const scope = { a: varVals.a, b: varVals.b, alpha: varVals.alpha, beta: varVals.beta, theta: varVals.theta, Ans: lastAnswerVal };
+    try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
+    try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
+    try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
+    try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
     return scope;
 }
 
-// ══════════════════════════════════════════════════════════════
-//  数值积分（辛普森 1/3，n=1000）
-// ══════════════════════════════════════════════════════════════
 function simpsonIntegral(exprStr, lower, upper, scope) {
     const code = math.compile(exprStr);
     const n = 1000, h = (upper - lower) / n;
@@ -480,18 +415,12 @@ function simpsonIntegral(exprStr, lower, upper, scope) {
     return sum * h / 3;
 }
 
-// ══════════════════════════════════════════════════════════════
-//  数值微分（中心差分）
-// ══════════════════════════════════════════════════════════════
 function numericalDeriv(exprStr, val, scope) {
     const h = 1e-7;
     const code = math.compile(exprStr);
     return (code.evaluate({ x:val+h, ...scope }) - code.evaluate({ x:val-h, ...scope })) / (2*h);
 }
 
-// ══════════════════════════════════════════════════════════════
-//  带 int/deriv 的完整求值
-// ══════════════════════════════════════════════════════════════
 function evaluateWithSpecials(exprStr, scope) {
     let str = exprStr;
     extractCallArgs(str, 'int').reverse().forEach(({ start, end, args }) => {
@@ -514,99 +443,215 @@ function evaluateWithSpecials(exprStr, scope) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  LaTeX 转换
+//  渲染管线：全新定制的 MathJS Handler 以支持绝美的纯 LaTeX 塔
 // ══════════════════════════════════════════════════════════════
-function safeToTex(s) {
-    s = s.trim();
-    try { return math.parse(s).toTex(); } catch(e) { return s; }
-}
-
-function expressionToTex(str) {
+function expressionToTexForDisplay(str) {
     if (!str) return '';
-    let result = str, changed = false;
-    extractCallArgs(result, 'int').reverse().forEach(({ start, end, args }) => {
-        if (args.length < 3) return;
-        try {
-            const tex = `\\int_{${safeToTex(args[1])}}^{${safeToTex(args[2])}} ${safeToTex(args[0])} \\, dx`;
-            result = result.slice(0, start) + tex + result.slice(end); changed = true;
-        } catch(e) {}
-    });
-    extractCallArgs(result, 'deriv').reverse().forEach(({ start, end, args }) => {
-        if (args.length < 2) return;
-        try {
-            const tex = `\\left.\\frac{d}{dx}\\left(${safeToTex(args[0])}\\right)\\right|_{x=${safeToTex(args[1])}}`;
-            result = result.slice(0, start) + tex + result.slice(end); changed = true;
-        } catch(e) {}
-    });
-    if (!changed) try { result = math.parse(str).toTex(); } catch(e) { result = str; }
-    return result;
+    // 用 XboxX 替用 □ 以通过 MathJS 原生语法树解析；用 () 替换 {}
+    let parseStr = str.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, 'XboxX');
+
+    try {
+        let tex = math.parse(parseStr).toTex({
+            handler: function(node, options) {
+                // 拦截指数运算，剔除自动生成的难看括号（从而形成真正的指数塔）
+                if (node.isOperatorNode && node.op === '^') {
+                    const base = node.args[0].toTex(options);
+                    let exp = node.args[1].toTex(options);
+                    if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) {
+                        exp = exp.slice(6, -7);
+                    }
+                    return `${base}^{${exp}}`;
+                }
+                // 在 AST 层面全局接管积分和求导渲染，彻底摆脱过去的字符拼接错误
+                if (node.isFunctionNode) {
+                    if (node.fn.name === 'int' && node.args.length === 3) {
+                        const a = node.args[0].toTex(options);
+                        const b = node.args[1].toTex(options);
+                        const c = node.args[2].toTex(options);
+                        return `\\int_{${b}}^{${c}} ${a} \\, dx`;
+                    }
+                    if (node.fn.name === 'deriv' && node.args.length === 2) {
+                        const a = node.args[0].toTex(options);
+                        const b = node.args[1].toTex(options);
+                        return `\\left.\\frac{d}{dx}\\left(${a}\\right)\\right|_{x=${b}}`;
+                    }
+                }
+            }
+        });
+        return tex.replace(/XboxX/g, '\\square');
+    } catch(e) {
+        // 如果在输入过程中出现语法未闭合，直接返回原生形式作为 Fallback 保底
+        return parseStr.replace(/XboxX/g, '\\square');
+    }
 }
 
-// ══════════════════════════════════════════════════════════════
-//  渲染 LaTeX（屏幕）
-// ══════════════════════════════════════════════════════════════
+function getDisplayTex(expr, mode) {
+    let s = expr;
+    // 注入游标标记
+    if (mode === state.mode) {
+        s = s.substring(0, cursorPos) + 'XcurX' + s.substring(cursorPos);
+    }
+
+    let tex = expressionToTexForDisplay(s);
+
+    // XcurX 在 MathJS 的 AST 中可能被视为隐式乘法，前后会被打上空格或点乘。正则捕获并消除这些干扰
+    tex = tex.replace(/(?:\\cdot\s*|\s+)?XcurX(?:\s*\\cdot|\s+)?/g, '\\htmlClass{cursor-blink}{|}');
+    tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
+
+    if (mode === 'fx')   tex = 'f(x) = ' + tex;
+    if (mode === 'gx')   tex = 'g(x) = ' + tex;
+    if (mode === 'vars') tex = VAR_LABELS[activeVar] + ' = ' + tex;
+
+    return tex;
+}
+
 function renderLatex() {
-    let tex = '';
-    try { tex = expressionToTex(currentExpression); } catch(e) { tex = currentExpression; }
-    if (state.mode === 'fx')   tex = 'f(x) = ' + tex;
-    if (state.mode === 'gx')   tex = 'g(x) = ' + tex;
-    if (state.mode === 'vars') tex = VAR_LABELS[activeVar] + ' = ' + tex;
-    katex.render(tex, singleDisplay, { displayMode:true, throwOnError:false });
+    let tex = getDisplayTex(currentExpression, state.mode);
+    katex.render(tex, singleDisplay, { displayMode:true, throwOnError:false, trust:true });
 }
 
 function updatePlotScreen() {
-    const render = (id, label, exp) => {
-        let tex = '';
-        try { tex = exp ? expressionToTex(exp) : '\\cdots'; } catch(e) { tex = exp || ''; }
-        katex.render(`${label} = ${tex}`, document.getElementById(id), { throwOnError:false });
+    const renderNoPrefix = (id, label, exp) => {
+        let tex = '\\cdots';
+        if(exp) {
+            try { tex = expressionToTexForDisplay(exp); } catch(e) { tex = exp; }
+            tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
+        }
+        katex.render(`${label} = ${tex}`, document.getElementById(id), { throwOnError:false, trust:true });
     };
-    render('line-fx', 'f(x)', state.expr.fx);
-    render('line-gx', 'g(x)', state.expr.gx);
+    renderNoPrefix('line-fx', 'f(x)', state.expr.fx);
+    renderNoPrefix('line-gx', 'g(x)', state.expr.gx);
 }
 
-// ══════════════════════════════════════════════════════════════
-//  输入操作
-// ══════════════════════════════════════════════════════════════
-function append(v)    { currentExpression += (v==='Ans' ? lastAnswer : v); renderLatex(); }
-function deleteLast() { currentExpression = currentExpression.slice(0,-1); renderLatex(); }
+function append(v) {
+    let insertStr = v;
+    let offset = v.length;
+
+    // 接管特定算符为块级输入
+    if (v === '^{}') {
+        insertStr = '^{□}';
+        offset = 2; // 光标进入花括号内的方框处
+    } else if (v === '^{2}') {
+        insertStr = '^{2}';
+        offset = 4; // 光标越过花括号到结尾
+    } else if (v === '*10^{}') {
+        insertStr = '*10^{□}';
+        offset = 5; 
+    } else if (v === 'int(') {
+        insertStr = 'int(□,□,□)';
+        offset = 4;
+    } else if (v === 'deriv(') {
+        insertStr = 'deriv(□,□)';
+        offset = 6;
+    }
+
+    if (currentExpression[cursorPos] === '□') {
+        currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos + 1);
+    } else {
+        currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos);
+    }
+    cursorPos += offset;
+    renderLatex();
+}
+
+function deleteLast() {
+    if (cursorPos === 0) return;
+    let leftStr = currentExpression.substring(0, cursorPos);
+    let rightStr = currentExpression.substring(cursorPos);
+
+    // 块域收尾保护：防止从外侧误删指数块边界，如遇右边界将游标推回块域内
+    if (leftStr.endsWith('}')) {
+        cursorPos -= 1;
+        renderLatex();
+        return;
+    }
+
+    // 探测块域空载：如果为空指数块，直接全块拔除
+    if (leftStr.endsWith('^{') && rightStr.startsWith('□}')) {
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(2);
+        cursorPos -= 2;
+        renderLatex();
+        return;
+    }
+    if (leftStr.endsWith('^{') && rightStr.startsWith('}')) {
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1);
+        cursorPos -= 2;
+        renderLatex();
+        return;
+    }
+
+    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{'];
+    let deletedLen = 1;
+    let isBracketBlock = false;
+
+    for (let t of atomicTokens) {
+        if (leftStr.endsWith(t)) {
+            deletedLen = t.length;
+            if (t === '^{') isBracketBlock = true;
+            break;
+        }
+    }
+
+    if (isBracketBlock) {
+        // 解压包裹体：如果你强行从块域头部执行删除，它将脱下大括号，令其子代“掉出”到上一级
+        leftStr = leftStr.substring(0, leftStr.length - 2);
+        let depth = 1, matchIdx = -1;
+        for (let i = 0; i < rightStr.length; i++) {
+            if (rightStr[i] === '{') depth++;
+            else if (rightStr[i] === '}') depth--;
+            if (depth === 0) { matchIdx = i; break; }
+        }
+        if (matchIdx !== -1) {
+            rightStr = rightStr.substring(0, matchIdx) + rightStr.substring(matchIdx + 1);
+        }
+        currentExpression = leftStr + rightStr;
+        cursorPos -= 2;
+    } else {
+        // 普通单字/函数头删除
+        currentExpression = leftStr.substring(0, leftStr.length - deletedLen) + rightStr;
+        cursorPos -= deletedLen;
+    }
+    renderLatex();
+}
+
 function clearAll() {
     currentExpression = '';
+    cursorPos = 0;
     renderLatex();
     if (state.mode === 'main') resVal.innerText = '0';
     if (state.mode === 'vars') resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
 }
 
-// ══════════════════════════════════════════════════════════════
-//  计算
-// ══════════════════════════════════════════════════════════════
 function calculate() {
+    if (currentExpression.includes('□')) {
+        resVal.innerText = 'Syntax Error';
+        return;
+    }
+    const evalStr = getEvalString(currentExpression);
     if (state.mode === 'vars') {
-        // 变量赋值模式
         try {
             const scope = getCombinedScope();
-            const res = evaluateWithSpecials(currentExpression, scope);
+            const res = evaluateWithSpecials(evalStr, scope);
             const num = typeof res === 'number' ? res : parseFloat(math.format(res));
             varVals[activeVar]  = num;
             varExprs[activeVar] = currentExpression;
-            lastAnswer = math.format(res, { precision:10 });
-            resVal.innerText = '= ' + lastAnswer;
+            lastAnswerVal = num;
+            lastAnswerStr = math.format(res, { precision:10 });
+            resVal.innerText = '= ' + lastAnswerStr;
             updateVarsPanel();
         } catch(e) { resVal.innerText = 'Error'; }
         return;
     }
     try {
         const scope = getCombinedScope();
-        const res = evaluateWithSpecials(currentExpression, scope);
-        lastAnswer = math.format(res, { precision:10 });
-        resVal.innerText = '= ' + lastAnswer;
+        const res = evaluateWithSpecials(evalStr, scope);
+        lastAnswerVal = typeof res === 'number' ? res : parseFloat(math.format(res));
+        lastAnswerStr = math.format(res, { precision:10 });
+        resVal.innerText = '= ' + lastAnswerStr;
     } catch(e) { resVal.innerText = 'Error'; }
 }
 
-// ══════════════════════════════════════════════════════════════
-//  模式切换
-// ══════════════════════════════════════════════════════════════
 function switchMode(m) {
-    // 保存离开模式的表达式
     if (state.mode === 'vars') {
         varExprs[activeVar] = currentExpression;
         state.expr.vars = currentExpression;
@@ -618,20 +663,16 @@ function switchMode(m) {
     document.getElementById('nav-' + m).classList.add('active');
     state.mode = m;
 
-    // 恢复目标模式的表达式
-    if (m === 'vars') {
-        currentExpression = varExprs[activeVar];
-    } else {
-        currentExpression = state.expr[m] || '';
-    }
+    if (m === 'vars') { currentExpression = varExprs[activeVar]; } 
+    else { currentExpression = state.expr[m] || ''; }
+    
+    cursorPos = currentExpression.length;
 
     const isVars  = m === 'vars';
     const isPlot  = m === 'plot';
     const isRoots = m === 'roots';
-    const isMain  = !isVars && !isPlot && !isRoots;  // main / fx / gx
 
-    // 面板显隐
-    document.getElementById('main-screen').style.display   = isRoots ? 'none'  : 'flex';
+    document.getElementById('main-screen').style.display    = isRoots ? 'none'  : 'flex';
     document.getElementById('keyboard-area').style.display  = (isPlot||isRoots) ? 'none' : 'grid';
     document.getElementById('graph-area').style.display     = isPlot  ? 'flex'  : 'none';
     document.getElementById('roots-panel').style.display    = isRoots ? 'flex'  : 'none';
@@ -649,7 +690,7 @@ function switchMode(m) {
         singleDisplay.style.display = 'block';
         doubleDisplay.style.display = 'none';
         resVal.style.display        = 'block';
-        if (m === 'main')  resVal.innerText = '= ' + lastAnswer;
+        if (m === 'main')  resVal.innerText = '= ' + lastAnswerStr;
         else if (isVars)   { resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8)); updateVarsPanel(); }
         else               resVal.innerText = m + ' 模式';
         renderLatex();
@@ -657,7 +698,7 @@ function switchMode(m) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  求根
+//  原有绘图与求根业务线（现完全接入统一的 evalStr 化机制）
 // ══════════════════════════════════════════════════════════════
 function setRootTarget(t) {
     state.rootTarget = t;
@@ -665,11 +706,6 @@ function setRootTarget(t) {
     document.getElementById('root-target-g').classList.toggle('active', t==='g');
 }
 
-
-
-// ══════════════════════════════════════════════════════════════
-//  Canvas 初始化 & 坐标映射
-// ══════════════════════════════════════════════════════════════
 function initCanvas() {
     const wrap=document.getElementById('canvas-wrap');
     const dpr=window.devicePixelRatio||1;
@@ -689,14 +725,13 @@ function makeMappers() {
         invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin),
     };
 }
+
 function bisection(f, a, b) {
-    // 增加对端点为零的直接判断
     if (Math.abs(f(a)) < 1e-12) return a;
     if (Math.abs(f(b)) < 1e-12) return b;
-    
-    for (let i = 0; i < 60; i++) {  // 增加迭代次数提高精度
+    for (let i = 0; i < 60; i++) { 
         const m = (a + b) / 2;
-        if (Math.abs(f(m)) < 1e-12) return m;  // 直接检查中点
+        if (Math.abs(f(m)) < 1e-12) return m; 
         if (f(a) * f(m) <= 0) b = m;
         else a = m;
     }
@@ -714,50 +749,38 @@ function calculateRoots() {
     
     try {
         const scope = getCombinedScope();
-        const compiled = math.compile(exp);
+        const compiled = math.compile(getEvalString(exp));
         const fn = v => compiled.evaluate({ x: v, ...scope });
         
-        const steps = 800;  // 增加扫描密度
+        const steps = 800;  
         const delta = (x2 - x1) / steps;
         let roots = [];
-        let signChanges = [];
         
-        // 第一步：收集所有可能的根区间
         for (let i = 0; i <= steps; i++) {
             const x = x1 + i * delta;
             const fx = fn(x);
-            
-            // 检测函数值接近零的点
             if (Math.abs(fx) < 1e-8) {
                 roots.push(x.toFixed(6));
             }
-            
-            // 检测符号变化
             if (i > 0) {
                 const prevX = x1 + (i - 1) * delta;
                 const prevFx = fn(prevX);
-                
-                // 如果符号变化或函数值穿过零点
                 if (prevFx * fx <= 0) {
-                    // 使用更精细的搜索
                     const refinedRoots = refinedSearch(fn, prevX, x);
                     roots.push(...refinedRoots);
                 }
             }
         }
         
-        // 第二步：使用导数辅助检测极值点附近的根
         if (roots.length === 0) {
             roots = findRootsWithDerivative(fn, x1, x2, steps);
         }
         
-        // 第三步：去重和排序
         roots = [...new Set(roots.map(Number))]
-            .filter(r => !isNaN(r) && Math.abs(fn(r)) < 1e-6)  // 验证确实是根
+            .filter(r => !isNaN(r) && Math.abs(fn(r)) < 1e-6) 
             .sort((a, b) => a - b)
             .map(r => r.toFixed(6));
         
-        // 显示结果
         if (roots.length === 0) {
             listEl.innerText = '未发现实根';
         } else {
@@ -773,81 +796,50 @@ function calculateRoots() {
     }
 }
 
-// 新增：在区间内进行更精细的搜索
 function refinedSearch(f, a, b, depth = 4) {
     const roots = [];
     const stack = [{ a, b, depth }];
     
     while (stack.length > 0) {
         const { a, b, depth } = stack.pop();
-        
         const fa = f(a);
         const fb = f(b);
         
-        // 直接找到根
-        if (Math.abs(fa) < 1e-12) {
-            roots.push(a);
-            continue;
-        }
-        if (Math.abs(fb) < 1e-12) {
-            roots.push(b);
-            continue;
-        }
+        if (Math.abs(fa) < 1e-12) { roots.push(a); continue; }
+        if (Math.abs(fb) < 1e-12) { roots.push(b); continue; }
         
-        // 如果符号相同且不是接近零，尝试在区间内采样
         if (fa * fb > 0 && Math.abs(fa) > 1e-8 && Math.abs(fb) > 1e-8) {
-            // 在区间内等间距采样5个点
             for (let i = 1; i < 5; i++) {
                 const x = a + (b - a) * i / 5;
-                const fx = f(x);
-                if (Math.abs(fx) < 1e-8) {
-                    roots.push(x);
-                }
+                if (Math.abs(f(x)) < 1e-8) roots.push(x);
             }
             continue;
         }
         
-        // 使用二分法
         const root = bisection(f, a, b);
-        if (Math.abs(f(root)) < 1e-6) {
-            roots.push(root);
-        }
+        if (Math.abs(f(root)) < 1e-6) { roots.push(root); }
         
-        // 如果深度允许，继续在左右子区间搜索
         if (depth > 0 && Math.abs(b - a) > 1e-6) {
             const mid = (a + b) / 2;
-            if (fa * f(mid) <= 0) {
-                stack.push({ a, b: mid, depth: depth - 1 });
-            }
-            if (f(mid) * fb <= 0) {
-                stack.push({ a: mid, b, depth: depth - 1 });
-            }
+            if (fa * f(mid) <= 0) stack.push({ a, b: mid, depth: depth - 1 });
+            if (f(mid) * fb <= 0) stack.push({ a: mid, b, depth: depth - 1 });
         }
     }
-    
     return [...new Set(roots.map(r => Number(r.toFixed(6))))];
 }
 
-// 新增：使用导数信息辅助找根
 function findRootsWithDerivative(f, a, b, steps = 200) {
     const roots = [];
     const delta = (b - a) / steps;
-    
-    // 近似计算导数
     for (let i = 0; i <= steps; i++) {
         const x = a + i * delta;
-        
-        // 中心差分法计算导数
         const h = 1e-6;
         const derivative = (f(x + h) - f(x - h)) / (2 * h);
         
-        // 如果导数接近零，可能是极值点或拐点
         if (Math.abs(derivative) < 1e-4) {
-            // 检查该点是否为根
             if (Math.abs(f(x)) < 1e-6) {
                 roots.push(x);
             } else {
-                // 在极值点附近搜索
                 const left = Math.max(a, x - delta);
                 const right = Math.min(b, x + delta);
                 const refined = refinedSearch(f, left, right, 3);
@@ -855,14 +847,9 @@ function findRootsWithDerivative(f, a, b, steps = 200) {
             }
         }
     }
-    
     return roots;
 }
 
-    
-// ══════════════════════════════════════════════════════════════
-//  绘图
-// ══════════════════════════════════════════════════════════════
 function drawGraph() {
     const {w,h,mX,mY}=makeMappers();
     ctx.clearRect(0,0,w,h);
@@ -881,7 +868,7 @@ function drawGraph() {
     [['fx','#0984e3'],['gx','#e17055']].forEach(([key,color])=>{
         if(!state.expr[key])return;
         try{
-            const compiled=math.compile(state.expr[key]);
+            const compiled=math.compile(getEvalString(state.expr[key]));
             ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
             let first=true;
             for(let i=0;i<=w;i+=1.5){
@@ -897,9 +884,6 @@ function drawGraph() {
     });
 }
 
-// ══════════════════════════════════════════════════════════════
-//  悬停追踪器
-// ══════════════════════════════════════════════════════════════
 function drawTracker(px,py) {
     drawGraph();
     const {w,h,mX,mY,invX}=makeMappers();
@@ -916,7 +900,7 @@ function drawTracker(px,py) {
     [['fx','#0984e3','f'],['gx','#e17055','g']].forEach(([key,color,label])=>{
         if(!state.expr[key])return;
         try{
-            const y=math.compile(state.expr[key]).evaluate({x,...scope});
+            const y=math.compile(getEvalString(state.expr[key])).evaluate({x,...scope});
             if(typeof y!=='number'||!isFinite(y))return;
             const dotY=mY(y);
             ctx.beginPath();ctx.arc(px,dotY,6,0,Math.PI*2);
@@ -963,9 +947,6 @@ function drawTracker(px,py) {
     ctx.restore();
 }
 
-// ══════════════════════════════════════════════════════════════
-//  移动模式
-// ══════════════════════════════════════════════════════════════
 function toggleMoveMode() {
     moveMode=!moveMode;
     const btn=document.getElementById('move-btn');
@@ -985,9 +966,6 @@ function canvasMathCoords(clientX,clientY) {
     return {px,py,cx,cy};
 }
 
-// ══════════════════════════════════════════════════════════════
-//  Canvas 事件
-// ══════════════════════════════════════════════════════════════
 canvas.addEventListener('mousedown',e=>{
     if(!moveMode)return;
     const {cx,cy}=canvasMathCoords(e.clientX,e.clientY);
@@ -1013,9 +991,6 @@ canvas.addEventListener('wheel',e=>{
     syncAllFromConfig();drawGraph();
 },{passive:false});
 
-// ══════════════════════════════════════════════════════════════
-//  X/Y 缩放滑动条
-// ══════════════════════════════════════════════════════════════
 function onXSlider() {
     const range=parseFloat(document.getElementById('xScaleSlider').value);
     const cx=(config.xMin+config.xMax)/2;
@@ -1029,9 +1004,6 @@ function onYSlider() {
     syncRangeInputsFromConfig();drawGraph();
 }
 
-// ══════════════════════════════════════════════════════════════
-//  同步函数
-// ══════════════════════════════════════════════════════════════
 function syncRangeInputsFromConfig() {
     document.getElementById('xMin').value=+config.xMin.toFixed(3);
     document.getElementById('xMax').value=+config.xMax.toFixed(3);
