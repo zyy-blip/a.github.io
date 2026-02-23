@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>网页版CASIO</title>
+    <title>网页版CASIO Pro - 终极拟合版</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css">
@@ -33,7 +33,7 @@
 
         .calculator {
             background-color: var(--calc-bg);
-            width: 400px; height: 692px;
+            width: 440px; height: 692px;
             border-radius: 30px;
             box-shadow: 0 40px 80px rgba(0,0,0,0.15);
             padding: 20px 24px 22px;
@@ -46,7 +46,7 @@
         .nav-btn {
             border: 1px solid #e0e6ed; background-color: #f8fafc;
             color: var(--text-main); border-radius: 10px; height: 34px;
-            font-size: 12px; font-family: var(--cm); font-weight: 800;
+            font-size: 13px; font-family: var(--cm); font-weight: 800;
             cursor: pointer; transition: 0.2s;
         }
         .nav-btn.active { background-color: var(--btn-primary); color: white; border-color: var(--btn-primary); }
@@ -70,34 +70,40 @@
             font-weight: 800;
         }
 
-        .vars-panel { display: none; flex-direction: column; gap: 5px; flex-shrink: 0; }
-        .var-row {
-            display: flex; align-items: center; gap: 10px;
-            background: #f8fafc; border: 1.5px solid #e0e6ed;
-            border-radius: 10px; padding: 0 14px; height: 30px;
-            cursor: pointer; transition: 0.15s; flex-shrink: 0;
+        .vars-panel {
+            display: none; grid-template-columns: repeat(3, 1fr);
+            gap: 5px; flex-shrink: 0;
         }
-        .var-row.active {
+        .var-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 1px; background: #f8fafc; border: 1.5px solid #e0e6ed;
+            border-radius: 10px; padding: 4px 6px; height: 50px;
+            cursor: pointer; transition: 0.15s; overflow: hidden;
+        }
+        .var-card.active {
             background: #eef4fd; border-color: var(--btn-primary);
             box-shadow: 0 0 0 2px rgba(74,144,226,0.18);
         }
-        .var-row:hover:not(.active) { background: #f1f4f8; }
+        .var-card:hover:not(.active) { background: #f1f4f8; }
         .var-name-cell {
-            width: 28px; flex-shrink: 0; font-size: 15px;
-            font-family: var(--cm); font-weight: 700; color: var(--text-main);
-            display: flex; align-items: center;
+            font-size: 14px; font-family: var(--cm); font-weight: 700;
+            color: var(--text-main); display: flex; align-items: center; justify-content: center;
+            line-height: 1;
         }
-        .var-eq { color: #aaa; font-size: 13px; flex-shrink: 0; }
+        .var-expr-cell { display: none; }
         .var-val-cell {
-            flex: 1; text-align: right; font-size: 13px;
-            font-family: var(--cm); color: #555; overflow: hidden;
-            white-space: nowrap; text-overflow: ellipsis;
+            font-size: 13px; font-family: var(--cm); color: #555; font-weight: 700;
+            text-align: center; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 100%; line-height: 1;
         }
-        .var-expr-cell {
-            flex: 2; text-align: left; font-size: 12px;
-            font-family: var(--cm); color: #999; overflow: hidden;
-            white-space: nowrap; text-overflow: ellipsis;
+        #var-btns-row { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; flex-shrink: 0; }
+        .btn-var-sm {
+            height: 26px; border: 1px solid #e0e6ed; border-radius: 8px;
+            background: #fff; cursor: pointer; transition: all 0.1s;
+            font-family: var(--cm); font-size: 13px; font-weight: 800;
+            color: #7c5cbf; font-style: italic; padding: 0;
         }
+        .btn-var-sm:active { transform: scale(0.94); background-color: #f5f5f5; }
 
         .keyboard { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; min-height: 0; }
         button {
@@ -107,7 +113,6 @@
         }
         button:active { transform: scale(0.94); background-color: #f5f5f5; }
         .btn-func   { color: var(--btn-primary); font-style: italic; font-size: 21px; }
-        .btn-var    { color: #7c5cbf; font-style: italic; font-size: 19px; }
         .btn-calc   { background-color: var(--btn-primary); color: white; font-size: 22px; border: none; }
         .btn-danger { background-color: var(--btn-danger); color: white; border: none; }
 
@@ -117,6 +122,11 @@
             position: relative; overflow: hidden; touch-action: none;
         }
         canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+        .axis-label {
+            position: absolute; font-size: 13px; color: #555; font-weight: 800; font-family: var(--cm);
+            background: rgba(255,255,255,0.85); padding: 2px 6px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
         .boundary-grid {
             display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
@@ -135,11 +145,14 @@
         }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; cursor: pointer; }
 
-        .root-results {
-            flex: 1; overflow-y: auto; background: white; border-radius: 14px;
-            padding: 12px; border: 1px solid #ddd;
-        }
+        .root-results { flex: 1; overflow-y: auto; background: white; border-radius: 14px; padding: 12px; border: 1px solid #ddd; }
         .root-katex-item { padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 18px; }
+
+        .fit-input-cell {
+            width: 100%; text-align: center; border: 1px solid #e0e6ed; border-radius: 8px;
+            padding: 6px; font-family: var(--cm); font-size: 15px; background: #fdfdfd;
+        }
+        .fit-input-cell:focus { outline: none; border-color: var(--btn-primary); }
     </style>
 </head>
 <body>
@@ -147,41 +160,29 @@
 
     <div class="top-nav">
         <button id="nav-vars"  class="nav-btn" onclick="switchMode('vars')">变量</button>
-        <button id="nav-fx"    class="nav-btn" onclick="switchMode('fx')">f(x)</button>
-        <button id="nav-gx"    class="nav-btn" onclick="switchMode('gx')">g(x)</button>
+        <button id="nav-funcs" class="nav-btn" onclick="switchMode('funcs')">函数</button>
         <button id="nav-main"  class="nav-btn active" onclick="switchMode('main')">计算</button>
         <button id="nav-plot"  class="nav-btn" onclick="switchMode('plot')">绘图</button>
         <button id="nav-roots" class="nav-btn" onclick="switchMode('roots')">求根</button>
+        <button id="nav-fit"   class="nav-btn" onclick="switchMode('fit')">拟合</button>
     </div>
 
     <div class="vars-panel" id="vars-panel">
-        <div class="var-row active" id="var-row-a"     onclick="selectVar('a')">
-            <div class="var-name-cell" id="vname-a"></div>
-            <div class="var-expr-cell" id="vexpr-a"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-a">0</div>
-        </div>
-        <div class="var-row" id="var-row-b"     onclick="selectVar('b')">
-            <div class="var-name-cell" id="vname-b"></div>
-            <div class="var-expr-cell" id="vexpr-b"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-b">0</div>
-        </div>
-        <div class="var-row" id="var-row-alpha"  onclick="selectVar('alpha')">
-            <div class="var-name-cell" id="vname-alpha"></div>
-            <div class="var-expr-cell" id="vexpr-alpha"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-alpha">0</div>
-        </div>
-        <div class="var-row" id="var-row-beta"   onclick="selectVar('beta')">
-            <div class="var-name-cell" id="vname-beta"></div>
-            <div class="var-expr-cell" id="vexpr-beta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-beta">0</div>
-        </div>
-        <div class="var-row" id="var-row-theta"  onclick="selectVar('theta')">
-            <div class="var-name-cell" id="vname-theta"></div>
-            <div class="var-expr-cell" id="vexpr-theta"></div><span class="var-eq">=</span><div class="var-val-cell"  id="vval-theta">0</div>
-        </div>
+        <div class="var-card active" id="var-row-a" onclick="selectVar('a')"><div class="var-name-cell" id="vname-a"></div><div class="var-val-cell" id="vval-a">0</div></div>
+        <div class="var-card" id="var-row-b" onclick="selectVar('b')"><div class="var-name-cell" id="vname-b"></div><div class="var-val-cell" id="vval-b">0</div></div>
+        <div class="var-card" id="var-row-c" onclick="selectVar('c')"><div class="var-name-cell" id="vname-c"></div><div class="var-val-cell" id="vval-c">0</div></div>
+        <div class="var-card" id="var-row-x" onclick="selectVar('x')"><div class="var-name-cell" id="vname-x"></div><div class="var-val-cell" id="vval-x">未定义</div></div>
+        <div class="var-card" id="var-row-y" onclick="selectVar('y')"><div class="var-name-cell" id="vname-y"></div><div class="var-val-cell" id="vval-y">0</div></div>
+        <div class="var-card" id="var-row-z" onclick="selectVar('z')"><div class="var-name-cell" id="vname-z"></div><div class="var-val-cell" id="vval-z">0</div></div>
+        <div class="var-card" id="var-row-alpha" onclick="selectVar('alpha')"><div class="var-name-cell" id="vname-alpha"></div><div class="var-val-cell" id="vval-alpha">0</div></div>
+        <div class="var-card" id="var-row-beta" onclick="selectVar('beta')"><div class="var-name-cell" id="vname-beta"></div><div class="var-val-cell" id="vval-beta">0</div></div>
+        <div class="var-card" id="var-row-theta" onclick="selectVar('theta')"><div class="var-name-cell" id="vname-theta"></div><div class="var-val-cell" id="vval-theta">0</div></div>
     </div>
 
     <div class="screen" id="main-screen">
         <div id="single-line-display" style="font-size:20px;width:100%;overflow-x:auto;"></div>
         <div class="plot-info-area" id="double-line-display">
-            <div class="latex-line" id="line-fx"></div>
-            <div class="latex-line" id="line-gx"></div>
+            <div class="latex-line" id="line-fx"></div><div class="latex-line" id="line-gx"></div>
         </div>
         <div id="calc-res-val" style="text-align:right;font-weight:800;font-size:20px;margin-top:5px;font-family:var(--cm);">0</div>
     </div>
@@ -203,7 +204,6 @@
         <div class="canvas-container" id="canvas-wrap">
             <canvas id="plotCanvas"></canvas>
         </div>
-
         <div class="boundary-grid">
             <div class="boundary-item"><span>X Min</span><input type="number" id="xMin" value="-10" step="1" onchange="syncFromInput()"></div>
             <div class="boundary-item"><span>X Max</span><input type="number" id="xMax" value="10"  step="1" onchange="syncFromInput()"></div>
@@ -213,22 +213,69 @@
         <button id="btn-trace" class="nav-btn" onclick="toggleTrace()" style="height: 36px; margin-top: 2px; flex-shrink:0;">开启追踪</button>
     </div>
 
-    <div class="keyboard" id="keyboard-area">
-        <button class="btn-var" onclick="append('a')">a</button>
-        <button class="btn-var" onclick="append('b')">b</button>
-        <button class="btn-var" onclick="append('alpha')">α</button>
-        <button class="btn-var" onclick="append('beta')">β</button>
-        <button class="btn-var" onclick="append('theta')">θ</button>
+    <div id="fit-data-panel" style="display:none; flex-direction:column; gap:8px; flex:1; background:white; border-radius:14px; padding:12px; border:1px solid #ddd; overflow-y:hidden;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; text-align:center; font-size:14px; font-weight:800; color:#555; flex-shrink:0;">
+            <div>自变量 (x)</div>
+            <div>因变量 (y)</div>
+        </div>
+        <div id="fit-rows" style="display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto; padding-right:4px;"></div>
+        <div style="display:flex; gap:8px; flex-shrink:0; margin-top:4px;">
+            <button class="nav-btn" style="flex:1;" onclick="addFitRow()">+ 添行</button>
+            <button class="nav-btn" style="flex:1; border-color:var(--btn-danger); color:var(--btn-danger);" onclick="removeFitRow()">- 删行</button>
+            <button id="btn-log-fit" class="nav-btn" style="flex:1;" onclick="toggleLogFit()">取 log₁₀</button>
+        </div>
+    </div>
 
+    <div id="fit-graph-panel" class="graph-area" style="display:none;">
+        <div class="canvas-container" id="fit-canvas-wrap">
+            <canvas id="fitCanvas"></canvas>
+            <div id="fit-axis-y" class="axis-label" style="top:5px; left:10px;">y</div>
+            <div id="fit-axis-x" class="axis-label" style="bottom:5px; right:10px;">x</div>
+        </div>
+        <div class="boundary-grid">
+            <div class="boundary-item"><span>X Min</span><input type="number" id="fitXMin" value="-10" step="1" onchange="syncFitFromInput()"></div>
+            <div class="boundary-item"><span>X Max</span><input type="number" id="fitXMax" value="10"  step="1" onchange="syncFitFromInput()"></div>
+            <div class="boundary-item"><span>Y Min</span><input type="number" id="fitYMin" value="-6"  step="1" onchange="syncFitFromInput()"></div>
+            <div class="boundary-item"><span>Y Max</span><input type="number" id="fitYMax" value="6"   step="1" onchange="syncFitFromInput()"></div>
+        </div>
+        <div style="display:flex; gap:8px; flex-shrink:0;">
+            <div id="fit-eq-display" style="flex:2; min-height:40px; display:flex; justify-content:center; align-items:center; background:white; border-radius:10px; border:1px solid #e0e6ed; padding:4px; font-size:16px; overflow-x:auto;"></div>
+            <div id="fit-r-display" style="flex:1; min-height:40px; display:flex; justify-content:center; align-items:center; background:white; border-radius:10px; border:1px solid #e0e6ed; padding:4px; font-size:16px;"></div>
+        </div>
+    </div>
+
+    <div id="funcs-subnav" style="display:none; grid-template-columns:1fr 1fr; gap:6px; flex-shrink:0;">
+        <button class="nav-btn active" id="func-target-f" onclick="setFuncTarget('f')">编辑 f(x)</button>
+        <button class="nav-btn"        id="func-target-g" onclick="setFuncTarget('g')">编辑 g(x)</button>
+    </div>
+
+    <div id="fit-subnav" style="display:none; grid-template-columns:1fr 1fr; gap:6px; flex-shrink:0;">
+        <button class="nav-btn active" id="fit-target-data" onclick="setFitTarget('data')">数据</button>
+        <button class="nav-btn"        id="fit-target-graph" onclick="setFitTarget('graph')">图像</button>
+    </div>
+
+    <div id="var-btns-row">
+        <button class="btn-var-sm" onclick="append('a')">a</button>
+        <button class="btn-var-sm" onclick="append('b')">b</button>
+        <button class="btn-var-sm" onclick="append('c')">c</button>
+        <button class="btn-var-sm" onclick="append('x')">x</button>
+        <button class="btn-var-sm" onclick="append('y')">y</button>
+        <button class="btn-var-sm" onclick="append('z')">z</button>
+        <button class="btn-var-sm" onclick="append('alpha')">α</button>
+        <button class="btn-var-sm" onclick="append('beta')">β</button>
+        <button class="btn-var-sm" onclick="append('theta')">θ</button>
+    </div>
+
+    <div class="keyboard" id="keyboard-area">
         <button class="btn-func" onclick="append('f(')">f(x)</button>
         <button class="btn-func" onclick="append('g(')">g(x)</button>
         <button onclick="append('int(')">∫</button>
         <button onclick="append('deriv(')">d/dx</button>
-        <button onclick="append('x')">x</button>
+        <button onclick="append('x')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span></button>
 
         <button onclick="append('sqrt(')">√</button>
-        <button onclick="append('^{2}')">x²</button>
-        <button onclick="append('^{}')">xⁿ</button>
+        <button onclick="append('^{2}')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span>²</button>
+        <button onclick="append('^{}')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span>ⁿ</button>
         <button onclick="append('log10(')">log</button>
         <button onclick="append('log(')">ln</button>
 
@@ -271,18 +318,24 @@
 </div>
 
 <script>
-let state = { mode: 'main', expr: { main:'', fx:'', gx:'', vars:'' }, rootTarget:'f' };
+let state = { mode: 'main', expr: { main:'', fx:'', gx:'', vars:'' }, rootTarget:'f', funcTarget:'f', fitTarget:'data' };
 let currentExpression = '';
 let cursorPos = 0;
 let lastAnswerVal = 0;
 let lastAnswerStr = '0';
 let config = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
-let isTraceMode = false; // 追踪模式状态
+let isTraceMode = false;
 
-const VAR_KEYS   = ['a','b','alpha','beta','theta'];
-const VAR_LABELS = { a:'a', b:'b', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
-const varExprs   = { a:'', b:'', alpha:'', beta:'', theta:'' };
-const varVals    = { a:0,  b:0,  alpha:0,  beta:0,  theta:0  };
+// 拟合数据系统
+let fitData = [{x: 1, y: 1}, {x: 2, y: 3}, {x: 3, y: 5}];
+let fitConfig = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
+let fitResult = { k: 0, b: 0, r: 0, valid: false, data: [] };
+let isLogFit = false;
+
+const VAR_KEYS   = ['a','b','c','x','y','z','alpha','beta','theta'];
+const VAR_LABELS = { a:'a', b:'b', c:'c', x:'x', y:'y', z:'z', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
+const varExprs   = { a:'', b:'', c:'', x:'', y:'', z:'', alpha:'', beta:'', theta:'' };
+const varVals    = { a:0,  b:0,  c:0,  x:0,  y:0,  z:0,  alpha:0,  beta:0,  theta:0  };
 let activeVar    = 'a';
 
 const singleDisplay = document.getElementById('single-line-display');
@@ -290,14 +343,72 @@ const doubleDisplay  = document.getElementById('double-line-display');
 const resVal         = document.getElementById('calc-res-val');
 const canvas         = document.getElementById('plotCanvas');
 const ctx            = canvas.getContext('2d');
+const fitCanvas      = document.getElementById('fitCanvas');
+const fitCtx         = fitCanvas.getContext('2d');
+
+function evalWithLocalX(code, scope, xVal) {
+    if (scope instanceof Map) {
+        const ls = new Map(scope); ls.set('x', xVal);
+        return code.evaluate(ls);
+    } else if (scope && typeof scope.set === 'function') {
+        const has = scope.has('x'), old = scope.get('x');
+        scope.set('x', xVal); const r = code.evaluate(scope);
+        if (has) scope.set('x', old); else scope.delete('x');
+        return r;
+    } else {
+        const ls = Object.assign({}, scope, { x: xVal });
+        return code.evaluate(ls);
+    }
+}
+
+function customInt(args, mathObj, scope) {
+    const lower = args[1].compile().evaluate(scope), upper = args[2].compile().evaluate(scope);
+    if (typeof lower !== 'number' || typeof upper !== 'number') return NaN;
+    const code = args[0].compile();
+    const n = 1000, h = (upper - lower) / n;
+    let sum = evalWithLocalX(code, scope, lower) + evalWithLocalX(code, scope, upper);
+    for (let i = 1; i < n; i++) sum += evalWithLocalX(code, scope, lower + i * h) * (i % 2 === 0 ? 2 : 4);
+    return sum * h / 3;
+}
+customInt.rawArgs = true;
+
+function customDeriv(args, mathObj, scope) {
+    const val = args[1].compile().evaluate(scope);
+    if (typeof val !== 'number') return NaN;
+    const code = args[0].compile();
+    let result;
+    try {
+        if (scope instanceof Map) {
+            const ls = new Map(scope); ls.set('x', val);
+            result = mathObj.derivative(args[0], 'x').evaluate(ls);
+        } else if (scope && typeof scope.set === 'function') {
+            const has = scope.has('x'), old = scope.get('x');
+            scope.set('x', val); result = mathObj.derivative(args[0], 'x').evaluate(scope);
+            if (has) scope.set('x', old); else scope.delete('x');
+        } else {
+            const ls = Object.assign({}, scope, { x: val });
+            result = mathObj.derivative(args[0], 'x').evaluate(ls);
+        }
+    } catch(e) {
+        const h = 1e-7;
+        const v1 = evalWithLocalX(code, scope, val + h), v2 = evalWithLocalX(code, scope, val - h);
+        result = (v1 - v2) / (2 * h);
+    }
+    return result;
+}
+customDeriv.rawArgs = true;
+math.import({ int: customInt, deriv: customDeriv }, { override: true });
 
 (function initVarsPanel() {
     VAR_KEYS.forEach(k => { katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false }); });
+    renderFitRows();
 })();
 
 function getEvalString(expr) {
     if (!expr) return '';
-    return expr.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, '1');
+    let s = expr.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, '1');
+    s = s.replace(/\^-\s*([a-zA-Z0-9_.]+(?:\([^)]*\))?|\([^)]*\))/g, '^(-$1)');
+    return s;
 }
 
 function moveCursor(dir) {
@@ -310,134 +421,121 @@ function moveCursor(dir) {
 function updateVarsPanel() {
     VAR_KEYS.forEach(k => {
         document.getElementById('var-row-' + k).classList.toggle('active', k === activeVar);
-        const val = varVals[k];
-        const valStr = (typeof val === 'number') ? parseFloat(val.toFixed(8)).toString() : String(val);
-        document.getElementById('vval-' + k).innerText = valStr;
-        const exprPrev = varExprs[k] || '';
-        document.getElementById('vexpr-' + k).innerText = exprPrev.length > 14 ? exprPrev.slice(0, 14) + '…' : exprPrev;
+        const el = document.getElementById('vval-' + k);
+        if (k === 'x' && varExprs.x === '') { el.innerText = '未定义'; el.style.color = '#bbb'; }
+        else {
+            const val = varVals[k];
+            el.innerText = (typeof val === 'number') ? parseFloat(val.toFixed(8)).toString() : String(val);
+            el.style.color = '#555';
+        }
     });
 }
 
 function selectVar(k) {
-    varExprs[activeVar] = currentExpression;
-    activeVar = k;
-    currentExpression = varExprs[k];
-    cursorPos = currentExpression.length;
-    updateVarsPanel();
-    renderLatex();
-    resVal.innerText = '= ' + parseFloat(varVals[k].toFixed(8)).toString();
-}
-
-function extractCallArgs(str, name) {
-    const results = [];
-    const prefix = name + '(';
-    let i = 0;
-    while (i < str.length) {
-        const idx = str.indexOf(prefix, i);
-        if (idx === -1) break;
-        if (idx > 0 && /[a-zA-Z0-9_]/.test(str[idx - 1])) { i = idx + 1; continue; }
-        let depth = 1, j = idx + prefix.length;
-        const args = [''];
-        let argIdx = 0;
-        while (j < str.length && depth > 0) {
-            const ch = str[j];
-            if      (ch === '(')                { depth++; args[argIdx] += ch; }
-            else if (ch === ')')                { depth--; if (depth > 0) args[argIdx] += ch; }
-            else if (ch === ',' && depth === 1) { argIdx++; args.push(''); }
-            else                                { args[argIdx] += ch; }
-            j++;
-        }
-        if (depth === 0) results.push({ start:idx, end:j, args });
-        i = idx + 1;
-    }
-    return results;
+    varExprs[activeVar] = currentExpression; activeVar = k;
+    currentExpression = varExprs[k]; cursorPos = currentExpression.length;
+    updateVarsPanel(); renderLatex();
+    if (k === 'x' && varExprs.x === '') resVal.innerText = 'x 未定义';
+    else resVal.innerText = '= ' + parseFloat(varVals[k].toFixed(8)).toString();
 }
 
 function getCombinedScope() {
-    const scope = { a: varVals.a, b: varVals.b, alpha: varVals.alpha, beta: varVals.beta, theta: varVals.theta, Ans: lastAnswerVal };
+    const scope = new Map(Object.entries({
+        a: varVals.a, b: varVals.b, c: varVals.c, y: varVals.y, z: varVals.z,
+        alpha: varVals.alpha, beta: varVals.beta, theta: varVals.theta, Ans: lastAnswerVal
+    }));
+    if (varExprs.x !== '') scope.set('x', varVals.x);
     try { if (state.expr.fx) math.evaluate(`f(x) = ${getEvalString(state.expr.fx)}`, scope); } catch(e) {}
     try { if (state.expr.gx) math.evaluate(`g(x) = ${getEvalString(state.expr.gx)}`, scope); } catch(e) {}
     return scope;
 }
 
-function simpsonIntegral(exprStr, lower, upper, scope) {
-    const code = math.compile(exprStr);
-    const n = 1000, h = (upper - lower) / n;
-    const ev = x => code.evaluate({ x, ...scope });
-    let sum = ev(lower) + ev(upper);
-    for (let i = 1; i < n; i++) sum += ev(lower + i * h) * (i % 2 === 0 ? 2 : 4);
-    return sum * h / 3;
-}
-
-function numericalDeriv(exprStr, val, scope) {
-    const h = 1e-7;
-    const code = math.compile(exprStr);
-    return (code.evaluate({ x:val+h, ...scope }) - code.evaluate({ x:val-h, ...scope })) / (2*h);
-}
-
-function evaluateWithSpecials(exprStr, scope) {
-    let str = exprStr;
-    extractCallArgs(str, 'int').reverse().forEach(({ start, end, args }) => {
-        if (args.length < 3) return;
-        const lower = math.evaluate(args[1].trim(), scope);
-        const upper = math.evaluate(args[2].trim(), scope);
-        const val   = simpsonIntegral(args[0].trim(), lower, upper, scope);
-        str = str.slice(0, start) + val + str.slice(end);
-    });
-    extractCallArgs(str, 'deriv').reverse().forEach(({ start, end, args }) => {
-        if (args.length < 2) return;
-        const inner = args[0].trim();
-        const val   = math.evaluate(args[1].trim(), scope);
-        let result;
-        try { result = math.derivative(inner, 'x').evaluate({ x:val, ...scope }); }
-        catch(e) { result = numericalDeriv(inner, val, scope); }
-        str = str.slice(0, start) + result + str.slice(end);
-    });
-    return math.evaluate(str, scope);
-}
-
+// 核心渲染逻辑 (完美解决希腊字母与负指数)
 function expressionToTexForDisplay(str) {
     if (!str) return '';
     let parseStr = str.replace(/\{/g, '(').replace(/\}/g, ')').replace(/□/g, 'XboxX');
+    parseStr = parseStr.replace(/\^-\s*([a-zA-Z0-9_.]+(?:\([^)]*\))?|\([^)]*\))/g, '^(-$1)');
 
-    try {
-        let tex = math.parse(parseStr).toTex({
-            handler: function(node, options) {
-                if (node.isOperatorNode && node.op === '^') {
-                    const base = node.args[0].toTex(options);
-                    let exp = node.args[1].toTex(options);
-                    if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) exp = exp.slice(6, -7);
-                    return `${base}^{${exp}}`;
-                }
-                if (node.isFunctionNode) {
-                    if (node.fn.name === 'int' && node.args.length === 3) {
-                        return `\\int_{${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}} ${node.args[0].toTex(options)} \\, dx`;
-                    }
-                    if (node.fn.name === 'deriv' && node.args.length === 2) {
-                        return `\\left.\\frac{d}{dx}\\left(${node.args[0].toTex(options)}\\right)\\right|_{x=${node.args[1].toTex(options)}}`;
-                    }
-                }
+    let result = '';
+    let changed = false;
+
+    // 先用与1.html同样强健的自定义提取处理积分和导数
+    function extractCallArgs(s, name) {
+        const results = []; const prefix = name + '('; let i = 0;
+        while (i < s.length) {
+            const idx = s.indexOf(prefix, i); if (idx === -1) break;
+            if (idx > 0 && /\w/.test(s[idx - 1])) { i = idx + 1; continue; }
+            let depth = 1, j = idx + prefix.length; const args = ['']; let argIdx = 0;
+            while (j < s.length && depth > 0) {
+                const ch = s[j];
+                if (ch === '(') { depth++; args[argIdx] += ch; }
+                else if (ch === ')') { depth--; if (depth > 0) args[argIdx] += ch; }
+                else if (ch === ',' && depth === 1) { argIdx++; args.push(''); }
+                else { args[argIdx] += ch; } j++;
             }
-        });
-        return tex.replace(/XboxX/g, '\\square');
-    } catch(e) {
-        return parseStr.replace(/XboxX/g, '\\square');
+            if (depth === 0) results.push({ start:idx, end:j, args });
+            i = idx + 1;
+        }
+        return results;
     }
+
+    let preStr = parseStr;
+    extractCallArgs(preStr, 'int').reverse().forEach(({ start, end, args }) => {
+        if (args.length < 3) return;
+        try {
+            const t = `\\int_{${math.parse(args[1]).toTex()}}^{${math.parse(args[2]).toTex()}} ${math.parse(args[0]).toTex()} \\, dx`;
+            preStr = preStr.slice(0, start) + t + preStr.slice(end); changed = true;
+        } catch(e) {}
+    });
+    extractCallArgs(preStr, 'deriv').reverse().forEach(({ start, end, args }) => {
+        if (args.length < 2) return;
+        try {
+            const t = `\\left.\\frac{d}{dx}\\left(${math.parse(args[0]).toTex()}\\right)\\right|_{x=${math.parse(args[1]).toTex()}}`;
+            preStr = preStr.slice(0, start) + t + preStr.slice(end); changed = true;
+        } catch(e) {}
+    });
+
+    if (!changed) {
+        try {
+            result = math.parse(preStr).toTex({
+                handler: function(node, options) {
+                    if (node.isOperatorNode && node.op === '^') {
+                        const base = node.args[0].toTex(options);
+                        let exp = node.args[1].toTex(options);
+                        if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) exp = exp.slice(6, -7);
+                        return `${base}^{${exp}}`;
+                    }
+                }
+            });
+        } catch(e) {
+            result = preStr.replace(/\^-\s*([a-zA-Z0-9_.]+)/g, '^{-$1}').replace(/\^([a-zA-Z0-9_.]+)/g, '^{$1}').replace(/\*/g, '\\times ');
+        }
+    } else {
+        result = preStr;
+    }
+
+    // 后处理替换希腊字母与系统符号（确保各种情况下绝对成功）
+    result = result.replace(/\\mathrm\{alpha\}/g, '\\alpha')
+                   .replace(/\\mathrm\{beta\}/g,  '\\beta')
+                   .replace(/\\mathrm\{theta\}/g, '\\theta')
+                   .replace(/\balpha\b/g, '\\alpha')
+                   .replace(/\bbeta\b/g, '\\beta')
+                   .replace(/\btheta\b/g, '\\theta')
+                   .replace(/\bpi\b/g, '\\pi')
+                   .replace(/XboxX/g, '\\square')
+                   .replace(/\^\{\\left\(-(.*?)\\right\)\}/g, '^{-$1}')
+                   .replace(/\bAns\b/g, '\\mathrm{Ans}');
+    return result;
 }
 
 function getDisplayTex(expr, mode) {
     let s = expr;
-    if (mode === state.mode) {
-        s = s.substring(0, cursorPos) + 'XcurX' + s.substring(cursorPos);
-    }
+    if (mode === state.mode) s = s.substring(0, cursorPos) + 'XcurX' + s.substring(cursorPos);
     let tex = expressionToTexForDisplay(s);
     tex = tex.replace(/(?:\\cdot\s*|\s+)?XcurX(?:\s*\\cdot|\s+)?/g, '\\htmlClass{cursor-blink}{|}');
-    tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
 
-    if (mode === 'fx')   tex = 'f(x) = ' + tex;
-    if (mode === 'gx')   tex = 'g(x) = ' + tex;
+    if (mode === 'funcs') tex = (state.funcTarget === 'f' ? 'f(x) = ' : 'g(x) = ') + tex;
     if (mode === 'vars') tex = VAR_LABELS[activeVar] + ' = ' + tex;
-
     return tex;
 }
 
@@ -449,10 +547,7 @@ function renderLatex() {
 function updatePlotScreen() {
     const renderNoPrefix = (id, label, exp) => {
         let tex = '\\cdots';
-        if(exp) {
-            try { tex = expressionToTexForDisplay(exp); } catch(e) { tex = exp; }
-            tex = tex.replace(/Ans/g, '\\mathrm{Ans}');
-        }
+        if(exp) { try { tex = expressionToTexForDisplay(exp); } catch(e) { tex = exp; } }
         katex.render(`${label} = ${tex}`, document.getElementById(id), { throwOnError:false, trust:true });
     };
     renderNoPrefix('line-fx', 'f(x)', state.expr.fx);
@@ -473,21 +568,19 @@ function append(v) {
         currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos);
     }
     cursorPos += offset; renderLatex();
+    if (state.mode === 'funcs') state.expr[state.funcTarget === 'f' ? 'fx' : 'gx'] = currentExpression;
 }
 
 function deleteLast() {
     if (cursorPos === 0) return;
-    let leftStr = currentExpression.substring(0, cursorPos);
-    let rightStr = currentExpression.substring(cursorPos);
+    let leftStr = currentExpression.substring(0, cursorPos), rightStr = currentExpression.substring(cursorPos);
 
     if (leftStr.endsWith('}')) { cursorPos -= 1; renderLatex(); return; }
     if (leftStr.endsWith('^{') && rightStr.startsWith('□}')) {
-        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(2);
-        cursorPos -= 2; renderLatex(); return;
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(2); cursorPos -= 2; renderLatex(); return;
     }
     if (leftStr.endsWith('^{') && rightStr.startsWith('}')) {
-        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1);
-        cursorPos -= 2; renderLatex(); return;
+        currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1); cursorPos -= 2; renderLatex(); return;
     }
 
     const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{'];
@@ -507,503 +600,335 @@ function deleteLast() {
         if (matchIdx !== -1) rightStr = rightStr.substring(0, matchIdx) + rightStr.substring(matchIdx + 1);
         currentExpression = leftStr + rightStr; cursorPos -= 2;
     } else {
-        currentExpression = leftStr.substring(0, leftStr.length - deletedLen) + rightStr;
-        cursorPos -= deletedLen;
+        currentExpression = leftStr.substring(0, leftStr.length - deletedLen) + rightStr; cursorPos -= deletedLen;
     }
     renderLatex();
+    if (state.mode === 'funcs') state.expr[state.funcTarget === 'f' ? 'fx' : 'gx'] = currentExpression;
 }
 
 function clearAll() {
     currentExpression = ''; cursorPos = 0; renderLatex();
     if (state.mode === 'main') resVal.innerText = '0';
-    if (state.mode === 'vars') resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
+    if (state.mode === 'vars') {
+        if (activeVar === 'x' && varExprs.x === '') resVal.innerText = 'x 未定义';
+        else resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
+    }
+    if (state.mode === 'funcs') { resVal.innerText = '编辑中...'; state.expr[state.funcTarget === 'f' ? 'fx' : 'gx'] = currentExpression; }
 }
+
+function xUndefinedErr(e) { const msg = e.message || ''; return /undefined symbol\s+x\b/i.test(msg) || /\bx\b.*undefined/i.test(msg); }
 
 function calculate() {
     if (currentExpression.includes('□')) { resVal.innerText = 'Syntax Error'; return; }
     const evalStr = getEvalString(currentExpression);
+
     if (state.mode === 'vars') {
         try {
-            const scope = getCombinedScope();
-            const res = evaluateWithSpecials(evalStr, scope);
+            const scope = getCombinedScope(), res = math.evaluate(evalStr, scope);
             const num = typeof res === 'number' ? res : parseFloat(math.format(res));
             varVals[activeVar] = num; varExprs[activeVar] = currentExpression;
             lastAnswerVal = num; lastAnswerStr = math.format(res, { precision:10 });
             resVal.innerText = '= ' + lastAnswerStr; updateVarsPanel();
-        } catch(e) { resVal.innerText = 'Error'; }
+        } catch(e) { resVal.innerText = xUndefinedErr(e) ? 'Error: x 未定义' : 'Error'; }
         return;
     }
+
+    if (state.mode === 'funcs') { state.expr[state.funcTarget === 'f' ? 'fx' : 'gx'] = currentExpression; resVal.innerText = '已保存'; return; }
+
     try {
-        const scope = getCombinedScope();
-        const res = evaluateWithSpecials(evalStr, scope);
+        const scope = getCombinedScope(), res = math.evaluate(evalStr, scope);
         lastAnswerVal = typeof res === 'number' ? res : parseFloat(math.format(res));
         lastAnswerStr = math.format(res, { precision:10 });
         resVal.innerText = '= ' + lastAnswerStr;
-    } catch(e) { resVal.innerText = 'Error'; }
+    } catch(e) { resVal.innerText = xUndefinedErr(e) ? 'Error: x 未定义' : 'Error'; }
+}
+
+// ─────────────────────────────────────────────────────────
+// 对数回归拟合系统
+// ─────────────────────────────────────────────────────────
+function renderFitRows() {
+    const container = document.getElementById('fit-rows'); container.innerHTML = '';
+    fitData.forEach((row, idx) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;';
+        div.innerHTML = `
+            <input type="number" step="any" value="${row.x}" class="fit-input-cell" onchange="updateFitData(${idx}, 'x', this.value)">
+            <input type="number" step="any" value="${row.y}" class="fit-input-cell" onchange="updateFitData(${idx}, 'y', this.value)">
+        `;
+        container.appendChild(div);
+    });
+}
+function updateFitData(idx, key, val) { fitData[idx][key] = parseFloat(val) || 0; }
+function addFitRow() { fitData.push({x: 0, y: 0}); renderFitRows(); const rows = document.getElementById('fit-rows'); rows.scrollTop = rows.scrollHeight; }
+function removeFitRow() { if (fitData.length > 2) { fitData.pop(); renderFitRows(); } }
+
+function toggleLogFit() {
+    isLogFit = !isLogFit;
+    const btn = document.getElementById('btn-log-fit');
+    if(isLogFit) {
+        btn.classList.add('active'); btn.innerHTML = '取消 log₁₀';
+        document.getElementById('fit-axis-y').innerText = 'log y';
+        document.getElementById('fit-axis-x').innerText = 'log x';
+    } else {
+        btn.classList.remove('active'); btn.innerHTML = '取 log₁₀';
+        document.getElementById('fit-axis-y').innerText = 'y';
+        document.getElementById('fit-axis-x').innerText = 'x';
+    }
+    if (state.mode === 'fit' && state.fitTarget === 'graph') { updateFitCalculation(); drawFitGraph(); }
+}
+
+function updateFitCalculation() {
+    let validData = [];
+    for (let p of fitData) {
+        let x = p.x, y = p.y;
+        if (isLogFit) {
+            if (x <= 0 || y <= 0) continue;
+            x = Math.log10(x); y = Math.log10(y);
+        }
+        validData.push({x, y});
+    }
+
+    const n = validData.length;
+    const eqDiv = document.getElementById('fit-eq-display');
+    const rDiv = document.getElementById('fit-r-display');
+
+    if (n < 2) {
+        fitResult.valid = false;
+        eqDiv.innerText = isLogFit ? '数据含≤0' : '数据不足';
+        rDiv.innerText = '-';
+        return;
+    }
+
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+    validData.forEach(p => { sumX+=p.x; sumY+=p.y; sumXY+=p.x*p.y; sumX2+=p.x*p.x; sumY2+=p.y*p.y; });
+    const denom = n * sumX2 - sumX * sumX;
+
+    if (Math.abs(denom) < 1e-10) {
+        fitResult.valid = false; eqDiv.innerText = '无法拟合'; rDiv.innerText = '-';
+    } else {
+        fitResult.k = (n * sumXY - sumX * sumY) / denom;
+        fitResult.b = (sumY - fitResult.k * sumX) / n;
+        const denR = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        fitResult.r = denR === 0 ? 0 : (n * sumXY - sumX * sumY) / denR;
+        fitResult.valid = true; fitResult.data = validData;
+    }
+
+    if (fitResult.valid) {
+        const kStr = parseFloat(fitResult.k.toFixed(4)), bStr = parseFloat(fitResult.b.toFixed(4)), rStr = parseFloat(fitResult.r.toFixed(4));
+        let eq = isLogFit ? `\\log y = ${kStr}\\log x` : `y = ${kStr}x`;
+        if (bStr > 0) eq += ` + ${bStr}`; else if (bStr < 0) eq += ` - ${Math.abs(bStr)}`;
+        katex.render(eq, eqDiv, { throwOnError: false });
+        katex.render(`r = ${rStr}`, rDiv, { throwOnError: false });
+    }
+}
+
+function setFitTarget(t) {
+    state.fitTarget = t;
+    document.getElementById('fit-target-data').classList.toggle('active', t==='data');
+    document.getElementById('fit-target-graph').classList.toggle('active', t==='graph');
+    document.getElementById('fit-data-panel').style.display = (t === 'data') ? 'flex' : 'none';
+    document.getElementById('fit-graph-panel').style.display = (t === 'graph') ? 'flex' : 'none';
+    if (t === 'graph') { updateFitCalculation(); setTimeout(() => { initFitCanvas(); drawFitGraph(); }, 50); }
+}
+
+function setFuncTarget(t) {
+    state.funcTarget = t;
+    document.getElementById('func-target-f').classList.toggle('active', t==='f');
+    document.getElementById('func-target-g').classList.toggle('active', t==='g');
+    if (state.mode === 'funcs') { currentExpression = state.expr[t === 'f' ? 'fx' : 'gx'] || ''; cursorPos = currentExpression.length; renderLatex(); resVal.innerText = '编辑中...'; }
 }
 
 function switchMode(m) {
-    if (state.mode === 'vars') {
-        varExprs[activeVar] = currentExpression; state.expr.vars = currentExpression;
-    } else { state.expr[state.mode] = currentExpression; }
+    if (state.mode === 'vars') { varExprs[activeVar] = currentExpression; state.expr.vars = currentExpression; }
+    else if (state.mode === 'main') { state.expr.main = currentExpression; }
 
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.top-nav .nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('nav-' + m).classList.add('active');
     state.mode = m;
 
     if (m === 'vars') currentExpression = varExprs[activeVar];
+    else if (m === 'funcs') currentExpression = state.expr[state.funcTarget === 'f' ? 'fx' : 'gx'] || '';
     else currentExpression = state.expr[m] || '';
     cursorPos = currentExpression.length;
 
-    const isVars = m === 'vars', isPlot = m === 'plot', isRoots = m === 'roots';
-    document.getElementById('main-screen').style.display    = isRoots ? 'none'  : 'flex';
-    document.getElementById('keyboard-area').style.display  = (isPlot||isRoots) ? 'none' : 'grid';
+    const isVars = m === 'vars', isPlot = m === 'plot', isRoots = m === 'roots', isFuncs = m === 'funcs', isFit = m === 'fit', isMain = m === 'main';
+
+    document.getElementById('funcs-subnav').style.display   = isFuncs ? 'grid' : 'none';
+    document.getElementById('fit-subnav').style.display     = isFit ? 'grid' : 'none';
+    document.getElementById('main-screen').style.display    = (isRoots || isFit) ? 'none'  : 'flex';
+    document.getElementById('keyboard-area').style.display  = (isPlot || isRoots || isFit) ? 'none' : 'grid';
+    document.getElementById('var-btns-row').style.display   = (isPlot || isRoots || isFit) ? 'none' : 'grid';
     document.getElementById('graph-area').style.display     = isPlot  ? 'flex'  : 'none';
     document.getElementById('roots-panel').style.display    = isRoots ? 'flex'  : 'none';
-    document.getElementById('vars-panel').style.display     = isVars  ? 'flex'  : 'none';
+    document.getElementById('vars-panel').style.display     = isVars  ? 'grid'  : 'none';
+    document.getElementById('fit-data-panel').style.display = (isFit && state.fitTarget === 'data') ? 'flex' : 'none';
+    document.getElementById('fit-graph-panel').style.display = (isFit && state.fitTarget === 'graph') ? 'flex' : 'none';
 
     if (isPlot) {
         singleDisplay.style.display = 'none'; doubleDisplay.style.display = 'flex'; resVal.style.display = 'none';
         updatePlotScreen(); setTimeout(() => { initCanvas(); drawGraph(); }, 50);
+    } else if (isFit) {
+        if (state.fitTarget === 'graph') { updateFitCalculation(); setTimeout(() => { initFitCanvas(); drawFitGraph(); }, 50); }
     } else if (!isRoots) {
         singleDisplay.style.display = 'block'; doubleDisplay.style.display = 'none'; resVal.style.display = 'block';
-        if (m === 'main') resVal.innerText = '= ' + lastAnswerStr;
-        else if (isVars) { resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8)); updateVarsPanel(); }
-        else resVal.innerText = m + ' 模式';
+        if (isMain) resVal.innerText = '= ' + lastAnswerStr;
+        else if (isVars) {
+            if (activeVar === 'x' && varExprs.x === '') resVal.innerText = 'x 未定义';
+            else resVal.innerText = '= ' + parseFloat(varVals[activeVar].toFixed(8));
+            updateVarsPanel();
+        }
+        else if (isFuncs) resVal.innerText = '编辑中...';
         renderLatex();
     }
 }
 
-// ══════════════════════════════════════════════════════════════
-// 追踪模式切换逻辑
-// ══════════════════════════════════════════════════════════════
-function toggleTrace() {
-    isTraceMode = !isTraceMode;
-    const btn = document.getElementById('btn-trace');
-    if (isTraceMode) {
-        btn.classList.add('active');
-        btn.innerText = '关闭追踪';
-    } else {
-        btn.classList.remove('active');
-        btn.innerText = '开启追踪';
-        drawGraph(); // 关闭追踪时清除悬浮辅助线
-    }
+// ─────────────────────────────────────────────────────────
+// 求根、绘图逻辑底层保留 (与前版高度一致)
+// ─────────────────────────────────────────────────────────
+function setRootTarget(t) { state.rootTarget = t; document.getElementById('root-target-f').classList.toggle('active', t==='f'); document.getElementById('root-target-g').classList.toggle('active', t==='g'); }
+function brent(f, a, b, tol = 1e-12) {
+    let fa = f(a), fb = f(b); if (isNaN(fa) || isNaN(fb) || fa * fb > 0) return null;
+    if (Math.abs(fa) < tol) return a; if (Math.abs(fb) < tol) return b;
+    let c = a, fc = fa, d = b - a, e = d; const EPS = 2.22e-16;
+    for (let iter = 0; iter < 120; iter++) {
+        if (fb * fc > 0) { c = a; fc = fa; d = e = b - a; }
+        if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
+        const tol1 = 2 * EPS * Math.abs(b) + tol * 0.5, xm = (c - b) * 0.5;
+        if (Math.abs(xm) <= tol1 || Math.abs(fb) < tol) return b;
+        if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+            let s = fb / fa, p, q, r;
+            if (a === c) { p = 2 * xm * s; q = 1 - s; }
+            else { q = fa / fc; r = fb / fc; p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1)); q = (q - 1) * (r - 1) * (s - 1); }
+            if (p > 0) q = -q; else p = -p;
+            if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) { e = d; d = p / q; } else { d = xm; e = d; }
+        } else { d = xm; e = d; }
+        a = b; fa = fb; b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1); fb = f(b);
+        if (isNaN(fb)) return null;
+    } return b;
 }
-
-// ══════════════════════════════════════════════════════════════
-// 全新健壮求根算法核心（一阶导探测法 + 严格复数过滤）
-// ══════════════════════════════════════════════════════════════
-function setRootTarget(t) {
-    state.rootTarget = t;
-    document.getElementById('root-target-f').classList.toggle('active', t==='f');
-    document.getElementById('root-target-g').classList.toggle('active', t==='g');
-}
-
-// 极其严苛的实数域包装：任何带有虚部的（即使极其微小）统统过滤，杜绝 x^x 产生复数伪根
 function safeFnWrap(rawFn) {
     return function(x) {
         try {
             const v = rawFn(x);
             if (typeof v === 'number') return (isNaN(v) || !isFinite(v)) ? NaN : v;
-            if (v && typeof v === 'object' && 're' in v) {
-                if (Math.abs(v.im) > 1e-12) return NaN; // 严格拒绝复数
-                return v.re;
-            }
+            if (v && typeof v === 'object' && 're' in v) { if (Math.abs(v.im) > 1e-12) return NaN; return v.re; }
             return NaN;
         } catch(e) { return NaN; }
     };
 }
-
-// Brent 方法求穿过 0 的解
-function brent(f, a, b, tol = 1e-12) {
-    let fa = f(a), fb = f(b);
-    if (isNaN(fa) || isNaN(fb) || fa * fb > 0) return null;
-    if (Math.abs(fa) < tol) return a;
-    if (Math.abs(fb) < tol) return b;
-
-    let c = a, fc = fa, d = b - a, e = d;
-    const EPS = 2.22e-16;
-    for (let iter = 0; iter < 120; iter++) {
-        if (fb * fc > 0) { c = a; fc = fa; d = e = b - a; }
-        if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
-        const tol1 = 2 * EPS * Math.abs(b) + tol * 0.5;
-        const xm = (c - b) * 0.5;
-        if (Math.abs(xm) <= tol1 || Math.abs(fb) < tol) return b;
-        if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
-            let s = fb / fa, p, q, r;
-            if (a === c) { p = 2 * xm * s; q = 1 - s; }
-            else {
-                q = fa / fc; r = fb / fc;
-                p = s * (2 * xm * q * (q - r) - (b - a) * (r - 1));
-                q = (q - 1) * (r - 1) * (s - 1);
-            }
-            if (p > 0) q = -q; else p = -p;
-            if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) { e = d; d = p / q; }
-            else { d = xm; e = d; }
-        } else { d = xm; e = d; }
-        a = b; fa = fb;
-        b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
-        fb = f(b);
-        if (isNaN(fb)) return null;
-    }
-    return b;
-}
-
 function calculateRoots() {
-    const x1 = parseFloat(document.getElementById('rootX1').value);
-    const x2 = parseFloat(document.getElementById('rootX2').value);
+    const x1 = parseFloat(document.getElementById('rootX1').value), x2 = parseFloat(document.getElementById('rootX2').value);
     const exp = state.expr[state.rootTarget === 'f' ? 'fx' : 'gx'];
-    const listEl = document.getElementById('root-list');
-    listEl.innerHTML = '';
-
+    const listEl = document.getElementById('root-list'); listEl.innerHTML = '';
     if (!exp) { listEl.innerText = '函数未定义'; return; }
     if (x1 >= x2) { listEl.innerText = 'Start 必须小于 End'; return; }
-
     try {
-        const scope = getCombinedScope();
-        const rawFn = v => math.compile(getEvalString(exp)).evaluate({ x: v, ...scope });
+        const scope = getCombinedScope(), compiled = math.compile(getEvalString(exp));
+        const rawFn = v => evalWithLocalX(compiled, scope, v);
         const fn = safeFnWrap(rawFn);
-
-        // 获取数值一阶导数（专门用于捕获 x^2 这类相切但不穿越的根）
-        const dFn = x => {
-            const h = 1e-6;
-            const f1 = fn(x + h), f2 = fn(x - h);
-            if(isNaN(f1) || isNaN(f2)) return NaN;
-            return (f1 - f2) / (2 * h);
-        };
-
-        const STEPS = 8000; // 超高扫描密度以防遗漏震荡函数 sin(e^x)
-        const h = (x2 - x1) / STEPS;
-        const candidates = [];
-
+        const dFn = x => { const h = 1e-6; const f1 = fn(x + h), f2 = fn(x - h); if(isNaN(f1) || isNaN(f2)) return NaN; return (f1 - f2) / (2 * h); };
+        const STEPS = 8000, h = (x2 - x1) / STEPS, candidates = [];
         let prevX = x1, prevF = fn(x1), prevDF = dFn(x1);
-
         for (let i = 1; i <= STEPS; i++) {
-            const curX = x1 + i * h;
-            const curF = fn(curX);
-            const curDF = dFn(curX);
-
-            // 1. 常规穿叉根
+            const curX = x1 + i * h, curF = fn(curX), curDF = dFn(curX);
             if (!isNaN(prevF) && !isNaN(curF)) {
-                if (prevF * curF < 0) {
-                    const r = brent(fn, prevX, curX);
-                    if (r !== null) candidates.push(r);
-                } else if (prevF === 0) {
-                    candidates.push(prevX);
-                }
+                if (prevF * curF < 0) { const r = brent(fn, prevX, curX); if (r !== null) candidates.push(r); }
+                else if (prevF === 0) candidates.push(prevX);
             }
-
-            // 2. 一阶导数过 0 的点（可能是相切根，如 x^2, x^6 的底部）
             if (!isNaN(prevDF) && !isNaN(curDF)) {
-                if (prevDF * curDF < 0) {
-                    const r = brent(dFn, prevX, curX);
-                    // 找到了极值点，再验证函数值是否等于0
-                    if (r !== null && Math.abs(fn(r)) < 1e-6) candidates.push(r);
-                }
+                if (prevDF * curDF < 0) { const r = brent(dFn, prevX, curX); if (r !== null && Math.abs(fn(r)) < 1e-6) candidates.push(r); }
             }
-
             prevX = curX; prevF = curF; prevDF = curDF;
         }
-
-        const TOL = 1e-6;
-        let finalRoots = candidates
-            .filter(r => !isNaN(r) && r >= x1 - 1e-5 && r <= x2 + 1e-5)
-            .map(r => Math.abs(r) < 1e-10 ? 0 : r) // 将极度接近0的浮点吸附归零
-            .filter(r => Math.abs(fn(r)) < TOL) // 二次严格筛选
-            .sort((a, b) => a - b);
-
-        // 强力聚类：解决多重根（如同一个点附近因精度报出多个极小值）
+        let finalRoots = candidates.filter(r => !isNaN(r) && r >= x1 - 1e-5 && r <= x2 + 1e-5).map(r => Math.abs(r) < 1e-10 ? 0 : r).filter(r => Math.abs(fn(r)) < 1e-6).sort((a, b) => a - b);
         const clustered = [];
         for (let i = 0; i < finalRoots.length; i++) {
-            if (clustered.length === 0) {
-                clustered.push(finalRoots[i]);
-            } else {
-                const last = clustered[clustered.length - 1];
-                if (Math.abs(finalRoots[i] - last) > 1e-4) {
-                    clustered.push(finalRoots[i]);
-                } else {
-                    // 若距离太近，保留函数绝对值更接近0的那个解
-                    if (Math.abs(fn(finalRoots[i])) < Math.abs(fn(last))) {
-                        clustered[clustered.length - 1] = finalRoots[i];
-                    }
-                }
-            }
+            if (clustered.length === 0) clustered.push(finalRoots[i]);
+            else { const last = clustered[clustered.length - 1]; if (Math.abs(finalRoots[i] - last) > 1e-4) clustered.push(finalRoots[i]); else if (Math.abs(fn(finalRoots[i])) < Math.abs(fn(last))) clustered[clustered.length - 1] = finalRoots[i]; }
         }
-
-        if (!clustered.length) {
-            listEl.innerText = '未发现实根';
-        } else {
-            clustered.forEach((r, idx) => {
-                const div = document.createElement('div');
-                div.className = 'root-katex-item';
-                listEl.appendChild(div);
-                katex.render(`x_{${idx + 1}} = ${parseFloat(r.toFixed(8))}`, div);
-            });
-        }
-    } catch(e) { listEl.innerText = '计算出错: ' + e.message; }
+        if (!clustered.length) listEl.innerText = '未发现实根';
+        else clustered.forEach((r, idx) => { const div = document.createElement('div'); div.className = 'root-katex-item'; listEl.appendChild(div); katex.render(`x_{${idx + 1}} = ${parseFloat(r.toFixed(8))}`, div); });
+    } catch(e) { listEl.innerText = xUndefinedErr(e) ? '计算出错: x 未定义' : '计算出错: ' + e.message; }
 }
 
-// ══════════════════════════════════════════════════════════════
-// 绘图与画布交互核心
-// ══════════════════════════════════════════════════════════════
-function initCanvas() {
-    const wrap=document.getElementById('canvas-wrap');
-    const dpr=window.devicePixelRatio||1;
-    canvas.width=wrap.clientWidth*dpr;
-    canvas.height=wrap.clientHeight*dpr;
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-}
-
-function makeMappers() {
-    const dpr=window.devicePixelRatio||1;
-    const w=canvas.width/dpr, h=canvas.height/dpr;
-    return {
-        w, h,
-        mX: x=>((x-config.xMin)/(config.xMax-config.xMin))*w,
-        mY: y=>h-((y-config.yMin)/(config.yMax-config.yMin))*h,
-        invX: px=>config.xMin+(px/w)*(config.xMax-config.xMin),
-        invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin),
-    };
-}
-
+function toggleTrace() { isTraceMode = !isTraceMode; const btn = document.getElementById('btn-trace'); if (isTraceMode) { btn.classList.add('active'); btn.innerText = '关闭追踪'; } else { btn.classList.remove('active'); btn.innerText = '开启追踪'; drawGraph(); } }
+function initCanvas() { const wrap=document.getElementById('canvas-wrap'), dpr=window.devicePixelRatio||1; canvas.width=wrap.clientWidth*dpr; canvas.height=wrap.clientHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
+function makeMappers() { const dpr=window.devicePixelRatio||1, w=canvas.width/dpr, h=canvas.height/dpr; return { w, h, mX: x=>((x-config.xMin)/(config.xMax-config.xMin))*w, mY: y=>h-((y-config.yMin)/(config.yMax-config.yMin))*h, invX: px=>config.xMin+(px/w)*(config.xMax-config.xMin), invY: py=>config.yMin+((h-py)/h)*(config.yMax-config.yMin) }; }
 function drawGraph() {
-    const {w,h,mX,mY}=makeMappers();
-    ctx.clearRect(0,0,w,h);
-
-    ctx.strokeStyle='#f0f0f0';ctx.lineWidth=1;ctx.beginPath();
-    for(let x=Math.floor(config.xMin);x<=config.xMax;x++){ctx.moveTo(mX(x),0);ctx.lineTo(mX(x),h);}
-    for(let y=Math.floor(config.yMin);y<=config.yMax;y++){ctx.moveTo(0,mY(y));ctx.lineTo(w,mY(y));}
-    ctx.stroke();
-
-    ctx.strokeStyle='#ccc';ctx.lineWidth=1.5;ctx.beginPath();
-    ctx.moveTo(0,mY(0));ctx.lineTo(w,mY(0));
-    ctx.moveTo(mX(0),0);ctx.lineTo(mX(0),h);
-    ctx.stroke();
-
-    const scope=getCombinedScope();
+    const {w,h,mX,mY}=makeMappers(); ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle='#f0f0f0';ctx.lineWidth=1;ctx.beginPath(); for(let x=Math.floor(config.xMin);x<=config.xMax;x++){ctx.moveTo(mX(x),0);ctx.lineTo(mX(x),h);} for(let y=Math.floor(config.yMin);y<=config.yMax;y++){ctx.moveTo(0,mY(y));ctx.lineTo(w,mY(y));} ctx.stroke();
+    ctx.strokeStyle='#ccc';ctx.lineWidth=1.5;ctx.beginPath(); ctx.moveTo(0,mY(0));ctx.lineTo(w,mY(0)); ctx.moveTo(mX(0),0);ctx.lineTo(mX(0),h); ctx.stroke();
+    const scope = getCombinedScope();
     [['fx','#0984e3'],['gx','#e17055']].forEach(([key,color])=>{
         if(!state.expr[key])return;
-        try{
-            const compiled=math.compile(getEvalString(state.expr[key]));
-            ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
-            let first=true;
-            for(let i=0;i<=w;i+=1.5){
-                const x=config.xMin+(i/w)*(config.xMax-config.xMin);
-                const y=compiled.evaluate({x,...scope});
-                if(typeof y==='number'&&isFinite(y)){
-                    const py=mY(y);
-                    if(first){ctx.moveTo(i,py);first=false;}else{ctx.lineTo(i,py);}
-                }else{first=true;}
-            }
-            ctx.stroke();
-        }catch(e){}
+        try{ const compiled=math.compile(getEvalString(state.expr[key])); ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5; let first=true; for(let i=0;i<=w;i+=1.5){ const x = config.xMin+(i/w)*(config.xMax-config.xMin), y = evalWithLocalX(compiled, scope, x); if(typeof y==='number'&&isFinite(y)){ const py=mY(y); if(first){ctx.moveTo(i,py);first=false;}else{ctx.lineTo(i,py);} }else{first=true;} } ctx.stroke(); }catch(e){}
     });
 }
-
 function drawTracker(px,py) {
-    drawGraph();
-    const {w,h,mX,mY,invX}=makeMappers();
-    const x=invX(px);
-    ctx.save();
-
-    ctx.strokeStyle='rgba(80,80,80,0.3)';ctx.lineWidth=1;
-    ctx.setLineDash([5,5]);
-    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,h);ctx.stroke();
-    ctx.setLineDash([]);
-
-    const scope=getCombinedScope();
-    const hits=[];
+    drawGraph(); const {w,h,mX,mY,invX}=makeMappers(); const x=invX(px); ctx.save();
+    ctx.strokeStyle='rgba(80,80,80,0.3)';ctx.lineWidth=1; ctx.setLineDash([5,5]); ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,h);ctx.stroke(); ctx.setLineDash([]);
+    const scope = getCombinedScope(), hits=[];
     [['fx','#0984e3','f'],['gx','#e17055','g']].forEach(([key,color,label])=>{
         if(!state.expr[key])return;
-        try{
-            const y=math.compile(getEvalString(state.expr[key])).evaluate({x,...scope});
-            if(typeof y!=='number'||!isFinite(y))return;
-            const dotY=mY(y);
-            ctx.beginPath();ctx.arc(px,dotY,6,0,Math.PI*2);
-            ctx.fillStyle='white';ctx.fill();
-            ctx.beginPath();ctx.arc(px,dotY,4.5,0,Math.PI*2);
-            ctx.fillStyle=color;ctx.fill();
-            hits.push({label,y,color});
-        }catch(e){}
+        try{ const compiled = math.compile(getEvalString(state.expr[key])); const y = evalWithLocalX(compiled, scope, x); if(typeof y!=='number'||!isFinite(y))return; const dotY=mY(y); ctx.beginPath();ctx.arc(px,dotY,6,0,Math.PI*2); ctx.fillStyle='white';ctx.fill(); ctx.beginPath();ctx.arc(px,dotY,4.5,0,Math.PI*2); ctx.fillStyle=color;ctx.fill(); hits.push({label,y,color}); }catch(e){}
     });
-
     if(!hits.length){ctx.restore();return;}
-
-    const xStr=parseFloat(x.toFixed(5)).toString();
-    const lines=[
-        {text:`x = ${xStr}`,color:'#444'},
-        ...hits.map(h=>({text:`${h.label}(x) = ${parseFloat(h.y.toFixed(5))}`,color:h.color}))
-    ];
-    const fSize=11.5,lineH=fSize+6,padX=10,padY=7,boxW=162;
-    const boxH=lines.length*lineH+padY*2;
-    let bx=px+16;if(bx+boxW>w-4)bx=px-boxW-16;
-    let by=py-boxH/2;if(by<4)by=4;if(by+boxH>h-4)by=h-boxH-4;
-
-    const r=7;
-    ctx.fillStyle='rgba(255,255,255,0.96)';
-    ctx.strokeStyle='rgba(0,0,0,0.11)';ctx.lineWidth=1;
-    ctx.shadowColor='rgba(0,0,0,0.07)';ctx.shadowBlur=8;
-    ctx.beginPath();
-    ctx.moveTo(bx+r,by);ctx.lineTo(bx+boxW-r,by);
-    ctx.quadraticCurveTo(bx+boxW,by,bx+boxW,by+r);
-    ctx.lineTo(bx+boxW,by+boxH-r);
-    ctx.quadraticCurveTo(bx+boxW,by+boxH,bx+boxW-r,by+boxH);
-    ctx.lineTo(bx+r,by+boxH);
-    ctx.quadraticCurveTo(bx,by+boxH,bx,by+boxH-r);
-    ctx.lineTo(bx,by+r);
-    ctx.quadraticCurveTo(bx,by,bx+r,by);
-    ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.shadowBlur=0;
-
-    const CM_FONT = "'Computer Modern Serif', 'CMU Serif', Georgia, serif";
-    ctx.font=`${fSize}px ${CM_FONT}`;ctx.textBaseline='middle';
-    lines.forEach((line,i)=>{
-        ctx.fillStyle=line.color;
-        ctx.fillText(line.text,bx+padX,by+padY+lineH*i+lineH/2);
-    });
-    ctx.restore();
+    const xStr=parseFloat(x.toFixed(5)).toString(), lines=[{text:`x = ${xStr}`,color:'#444'}, ...hits.map(h=>({text:`${h.label}(x) = ${parseFloat(h.y.toFixed(5))}`,color:h.color}))];
+    const fSize=11.5,lineH=fSize+6,padX=10,padY=7,boxW=162, boxH=lines.length*lineH+padY*2;
+    let bx=px+16;if(bx+boxW>w-4)bx=px-boxW-16; let by=py-boxH/2;if(by<4)by=4;if(by+boxH>h-4)by=h-boxH-4; const r=7;
+    ctx.fillStyle='rgba(255,255,255,0.96)'; ctx.strokeStyle='rgba(0,0,0,0.11)';ctx.lineWidth=1; ctx.shadowColor='rgba(0,0,0,0.07)';ctx.shadowBlur=8; ctx.beginPath(); ctx.moveTo(bx+r,by);ctx.lineTo(bx+boxW-r,by); ctx.quadraticCurveTo(bx+boxW,by,bx+boxW,by+r); ctx.lineTo(bx+boxW,by+boxH-r); ctx.quadraticCurveTo(bx+boxW,by+boxH,bx+boxW-r,by+boxH); ctx.lineTo(bx+r,by+boxH); ctx.quadraticCurveTo(bx,by+boxH,bx,by+boxH-r); ctx.lineTo(bx,by+r); ctx.quadraticCurveTo(bx,by,bx+r,by); ctx.closePath();ctx.fill();ctx.stroke(); ctx.shadowBlur=0;
+    ctx.font=`${fSize}px 'Computer Modern Serif', 'CMU Serif', Georgia, serif`;ctx.textBaseline='middle';
+    lines.forEach((line,i)=>{ ctx.fillStyle=line.color; ctx.fillText(line.text,bx+padX,by+padY+lineH*i+lineH/2); }); ctx.restore();
 }
 
-function canvasPixelCoords(clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const dpr  = window.devicePixelRatio || 1;
-    const w    = canvas.width / dpr, h = canvas.height / dpr;
-    return {
-        px: (clientX - rect.left) * (w / rect.width),
-        py: (clientY - rect.top)  * (h / rect.height),
-        w, h, rect
-    };
+function initFitCanvas() { const wrap=document.getElementById('fit-canvas-wrap'), dpr=window.devicePixelRatio||1; fitCanvas.width=wrap.clientWidth*dpr; fitCanvas.height=wrap.clientHeight*dpr; fitCtx.setTransform(dpr,0,0,dpr,0,0); }
+function makeFitMappers() { const dpr=window.devicePixelRatio||1, w=fitCanvas.width/dpr, h=fitCanvas.height/dpr; return { w, h, mX: x=>((x-fitConfig.xMin)/(fitConfig.xMax-fitConfig.xMin))*w, mY: y=>h-((y-fitConfig.yMin)/(fitConfig.yMax-fitConfig.yMin))*h }; }
+function drawFitGraph() {
+    const {w,h,mX,mY}=makeFitMappers(); fitCtx.clearRect(0,0,w,h);
+    fitCtx.strokeStyle='#f0f0f0';fitCtx.lineWidth=1;fitCtx.beginPath(); for(let x=Math.floor(fitConfig.xMin);x<=fitConfig.xMax;x++){fitCtx.moveTo(mX(x),0);fitCtx.lineTo(mX(x),h);} for(let y=Math.floor(fitConfig.yMin);y<=fitConfig.yMax;y++){fitCtx.moveTo(0,mY(y));fitCtx.lineTo(w,mY(y));} fitCtx.stroke();
+    fitCtx.strokeStyle='#ccc';fitCtx.lineWidth=1.5;fitCtx.beginPath(); fitCtx.moveTo(0,mY(0));fitCtx.lineTo(w,mY(0)); fitCtx.moveTo(mX(0),0);fitCtx.lineTo(mX(0),h); fitCtx.stroke();
+    if (fitResult.valid) {
+        fitCtx.beginPath(); fitCtx.strokeStyle='#f56c6c'; fitCtx.lineWidth=2.5; const x1 = fitConfig.xMin, y1 = fitResult.k * x1 + fitResult.b, x2 = fitConfig.xMax, y2 = fitResult.k * x2 + fitResult.b;
+        fitCtx.moveTo(mX(x1), mY(y1)); fitCtx.lineTo(mX(x2), mY(y2)); fitCtx.stroke();
+        fitCtx.fillStyle = '#0984e3'; fitResult.data.forEach(p => { const cx = mX(p.x), cy = mY(p.y); if(cx >= -10 && cx <= w+10 && cy >= -10 && cy <= h+10) { fitCtx.beginPath(); fitCtx.arc(cx, cy, 4, 0, Math.PI*2); fitCtx.fill(); } });
+    }
 }
 
-// 事件接管逻辑：当开启追踪时，追踪坐标；未开启时，负责平移缩放
-canvas.addEventListener('mousemove', e => {
-    if (!isTraceMode) return;
-    const { px, py } = canvasPixelCoords(e.clientX, e.clientY);
-    drawTracker(px, py);
-});
-
-canvas.addEventListener('mousedown', e => {
-    if (!isTraceMode) return;
-    const { px, py } = canvasPixelCoords(e.clientX, e.clientY);
-    drawTracker(px, py);
-});
-
+function canvasPixelCoords(canvasElem, clientX, clientY) { const rect = canvasElem.getBoundingClientRect(), dpr  = window.devicePixelRatio || 1, w = canvasElem.width / dpr, h = canvasElem.height / dpr; return { px: (clientX - rect.left) * (w / rect.width), py: (clientY - rect.top)  * (h / rect.height), w, h, rect }; }
+canvas.addEventListener('mousemove', e => { if (!isTraceMode) return; const { px, py } = canvasPixelCoords(canvas, e.clientX, e.clientY); drawTracker(px, py); });
+canvas.addEventListener('mousedown', e => { if (!isTraceMode) return; const { px, py } = canvasPixelCoords(canvas, e.clientX, e.clientY); drawTracker(px, py); });
 canvas.addEventListener('mouseleave', () => { drawGraph(); });
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (isTraceMode) return; const factor = e.deltaY > 0 ? 1.12 : 0.9, dx = (config.xMax - config.xMin) * (factor - 1), dy = (config.yMax - config.yMin) * (factor - 1); config.xMin -= dx / 2; config.xMax += dx / 2; config.yMin -= dy / 2; config.yMax += dy / 2; syncRangeInputsFromConfig(); drawGraph(); }, { passive: false });
 
-canvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    if (isTraceMode) return; // 追踪模式下屏蔽滚轮缩放
-    const factor = e.deltaY > 0 ? 1.12 : 0.9;
-    const dx = (config.xMax - config.xMin) * (factor - 1);
-    const dy = (config.yMax - config.yMin) * (factor - 1);
-    config.xMin -= dx / 2; config.xMax += dx / 2;
-    config.yMin -= dy / 2; config.yMax += dy / 2;
-    syncRangeInputsFromConfig(); drawGraph();
-}, { passive: false });
+let touch1 = null, touch2 = null; function getTouchById(list, id) { for (const t of list) if (t.identifier === id) return t; return null; }
+canvas.addEventListener('touchstart', e => { e.preventDefault(); if (isTraceMode) { const { px, py } = canvasPixelCoords(canvas, e.touches[0].clientX, e.touches[0].clientY); drawTracker(px, py); return; } if (e.touches.length === 1) { touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; touch2 = null; } else if (e.touches.length >= 2) { touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; touch2 = { id: e.touches[1].identifier, x: e.touches[1].clientX, y: e.touches[1].clientY }; } }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (isTraceMode) { const { px, py } = canvasPixelCoords(canvas, e.touches[0].clientX, e.touches[0].clientY); drawTracker(px, py); return; } const rect = canvas.getBoundingClientRect(); if (e.touches.length === 1 && touch1 && !touch2) { const t = getTouchById(e.touches, touch1.id) || e.touches[0], dx = (t.clientX - touch1.x) / rect.width * (config.xMax - config.xMin), dy = (t.clientY - touch1.y) / rect.height * (config.yMax - config.yMin); config.xMin -= dx; config.xMax -= dx; config.yMin += dy; config.yMax += dy; touch1 = { id: t.identifier, x: t.clientX, y: t.clientY }; syncRangeInputsFromConfig(); drawGraph(); } else if (e.touches.length >= 2 && touch1 && touch2) { const ta = getTouchById(e.touches, touch1.id) || e.touches[0], tb = getTouchById(e.touches, touch2.id) || e.touches[1], prevDx = Math.abs(touch1.x - touch2.x), prevDy = Math.abs(touch1.y - touch2.y), curDx  = Math.abs(ta.clientX - tb.clientX), curDy  = Math.abs(ta.clientY - tb.clientY), midClientX = (ta.clientX + tb.clientX) / 2, midClientY = (ta.clientY + tb.clientY) / 2, anchorRatioX = (midClientX - rect.left) / rect.width, anchorRatioY = (midClientY - rect.top) / rect.height, anchorMathX  = config.xMin + anchorRatioX * (config.xMax - config.xMin), anchorMathY  = config.yMax - anchorRatioY * (config.yMax - config.yMin); if (prevDx > 5 && curDx > 5) { const scaleX = prevDx / curDx, xRange = (config.xMax - config.xMin) * scaleX; config.xMin = anchorMathX - anchorRatioX * xRange; config.xMax = config.xMin + xRange; } if (prevDy > 5 && curDy > 5) { const scaleY = prevDy / curDy, yRange = (config.yMax - config.yMin) * scaleY; config.yMax = anchorMathY + anchorRatioY * yRange; config.yMin = config.yMax - yRange; } const prevMidX = (touch1.x + touch2.x) / 2, prevMidY = (touch1.y + touch2.y) / 2, panDx = (midClientX - prevMidX) / rect.width * (config.xMax - config.xMin), panDy = (midClientY - prevMidY) / rect.height * (config.yMax - config.yMin); config.xMin -= panDx; config.xMax -= panDx; config.yMin += panDy; config.yMax += panDy; touch1 = { id: ta.identifier, x: ta.clientX, y: ta.clientY }; touch2 = { id: tb.identifier, x: tb.clientX, y: tb.clientY }; syncRangeInputsFromConfig(); drawGraph(); } }, { passive: false });
+canvas.addEventListener('touchend', e => { e.preventDefault(); if (e.touches.length === 0) { touch1 = null; touch2 = null; } else if (e.touches.length === 1) { touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; touch2 = null; } }, { passive: false }); canvas.addEventListener('touchcancel', () => { touch1 = null; touch2 = null; });
 
-let touch1 = null, touch2 = null;
-function getTouchById(list, id) {
-    for (const t of list) if (t.identifier === id) return t;
-    return null;
-}
+let fitTouch1 = null, fitTouch2 = null;
+fitCanvas.addEventListener('wheel', e => { e.preventDefault(); const factor = e.deltaY > 0 ? 1.12 : 0.9, dx = (fitConfig.xMax - fitConfig.xMin) * (factor - 1), dy = (fitConfig.yMax - fitConfig.yMin) * (factor - 1); fitConfig.xMin -= dx / 2; fitConfig.xMax += dx / 2; fitConfig.yMin -= dy / 2; fitConfig.yMax += dy / 2; syncFitRangeInputsFromConfig(); drawFitGraph(); }, { passive: false });
+fitCanvas.addEventListener('touchstart', e => { e.preventDefault(); if (e.touches.length === 1) { fitTouch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; fitTouch2 = null; } else if (e.touches.length >= 2) { fitTouch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; fitTouch2 = { id: e.touches[1].identifier, x: e.touches[1].clientX, y: e.touches[1].clientY }; } }, { passive: false });
+fitCanvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = fitCanvas.getBoundingClientRect(); if (e.touches.length === 1 && fitTouch1 && !fitTouch2) { const t = getTouchById(e.touches, fitTouch1.id) || e.touches[0], dx = (t.clientX - fitTouch1.x) / rect.width * (fitConfig.xMax - fitConfig.xMin), dy = (t.clientY - fitTouch1.y) / rect.height * (fitConfig.yMax - fitConfig.yMin); fitConfig.xMin -= dx; fitConfig.xMax -= dx; fitConfig.yMin += dy; fitConfig.yMax += dy; fitTouch1 = { id: t.identifier, x: t.clientX, y: t.clientY }; syncFitRangeInputsFromConfig(); drawFitGraph(); } else if (e.touches.length >= 2 && fitTouch1 && fitTouch2) { const ta = getTouchById(e.touches, fitTouch1.id) || e.touches[0], tb = getTouchById(e.touches, fitTouch2.id) || e.touches[1], prevDx = Math.abs(fitTouch1.x - fitTouch2.x), prevDy = Math.abs(fitTouch1.y - fitTouch2.y), curDx  = Math.abs(ta.clientX - tb.clientX), curDy  = Math.abs(ta.clientY - tb.clientY), midClientX = (ta.clientX + tb.clientX) / 2, midClientY = (ta.clientY + tb.clientY) / 2, anchorRatioX = (midClientX - rect.left) / rect.width, anchorRatioY = (midClientY - rect.top) / rect.height, anchorMathX  = fitConfig.xMin + anchorRatioX * (fitConfig.xMax - fitConfig.xMin), anchorMathY  = fitConfig.yMax - anchorRatioY * (fitConfig.yMax - fitConfig.yMin); if (prevDx > 5 && curDx > 5) { const scaleX = prevDx / curDx, xRange = (fitConfig.xMax - fitConfig.xMin) * scaleX; fitConfig.xMin = anchorMathX - anchorRatioX * xRange; fitConfig.xMax = fitConfig.xMin + xRange; } if (prevDy > 5 && curDy > 5) { const scaleY = prevDy / curDy, yRange = (fitConfig.yMax - fitConfig.yMin) * scaleY; fitConfig.yMax = anchorMathY + anchorRatioY * yRange; fitConfig.yMin = fitConfig.yMax - yRange; } const prevMidX = (fitTouch1.x + fitTouch2.x) / 2, prevMidY = (fitTouch1.y + fitTouch2.y) / 2, panDx = (midClientX - prevMidX) / rect.width * (fitConfig.xMax - fitConfig.xMin), panDy = (midClientY - prevMidY) / rect.height * (fitConfig.yMax - fitConfig.yMin); fitConfig.xMin -= panDx; fitConfig.xMax -= panDx; fitConfig.yMin += panDy; fitConfig.yMax += panDy; fitTouch1 = { id: ta.identifier, x: ta.clientX, y: ta.clientY }; fitTouch2 = { id: tb.identifier, x: tb.clientX, y: tb.clientY }; syncFitRangeInputsFromConfig(); drawFitGraph(); } }, { passive: false });
+fitCanvas.addEventListener('touchend', e => { e.preventDefault(); if (e.touches.length === 0) { fitTouch1 = null; fitTouch2 = null; } else if (e.touches.length === 1) { fitTouch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY }; fitTouch2 = null; } }, { passive: false }); fitCanvas.addEventListener('touchcancel', () => { fitTouch1 = null; fitTouch2 = null; });
 
-canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (isTraceMode) {
-        const { px, py } = canvasPixelCoords(e.touches[0].clientX, e.touches[0].clientY);
-        drawTracker(px, py);
-        return;
-    }
-    if (e.touches.length === 1) {
-        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
-        touch2 = null;
-    } else if (e.touches.length >= 2) {
-        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
-        touch2 = { id: e.touches[1].identifier, x: e.touches[1].clientX, y: e.touches[1].clientY };
-    }
-}, { passive: false });
+function syncRangeInputsFromConfig() { document.getElementById('xMin').value = +config.xMin.toFixed(3); document.getElementById('xMax').value = +config.xMax.toFixed(3); document.getElementById('yMin').value = +config.yMin.toFixed(3); document.getElementById('yMax').value = +config.yMax.toFixed(3); }
+function syncFromInput() { config.xMin = parseFloat(document.getElementById('xMin').value); config.xMax = parseFloat(document.getElementById('xMax').value); config.yMin = parseFloat(document.getElementById('yMin').value); config.yMax = parseFloat(document.getElementById('yMax').value); drawGraph(); }
+function syncFitRangeInputsFromConfig() { document.getElementById('fitXMin').value = +fitConfig.xMin.toFixed(3); document.getElementById('fitXMax').value = +fitConfig.xMax.toFixed(3); document.getElementById('fitYMin').value = +fitConfig.yMin.toFixed(3); document.getElementById('fitYMax').value = +fitConfig.yMax.toFixed(3); }
+function syncFitFromInput() { fitConfig.xMin = parseFloat(document.getElementById('fitXMin').value); fitConfig.xMax = parseFloat(document.getElementById('fitXMax').value); fitConfig.yMin = parseFloat(document.getElementById('fitYMin').value); fitConfig.yMax = parseFloat(document.getElementById('fitYMax').value); drawFitGraph(); }
 
-canvas.addEventListener('touchmove', e => {
-    e.preventDefault();
-    if (isTraceMode) {
-        const { px, py } = canvasPixelCoords(e.touches[0].clientX, e.touches[0].clientY);
-        drawTracker(px, py);
-        return;
-    }
-    const rect = canvas.getBoundingClientRect();
-    if (e.touches.length === 1 && touch1 && !touch2) {
-        const t = getTouchById(e.touches, touch1.id) || e.touches[0];
-        const dx = (t.clientX - touch1.x) / rect.width  * (config.xMax - config.xMin);
-        const dy = (t.clientY - touch1.y) / rect.height * (config.yMax - config.yMin);
-        config.xMin -= dx; config.xMax -= dx;
-        config.yMin += dy; config.yMax += dy;
-        touch1 = { id: t.identifier, x: t.clientX, y: t.clientY };
-        syncRangeInputsFromConfig(); drawGraph();
-    } else if (e.touches.length >= 2 && touch1 && touch2) {
-        const ta = getTouchById(e.touches, touch1.id) || e.touches[0];
-        const tb = getTouchById(e.touches, touch2.id) || e.touches[1];
-        const prevDx = Math.abs(touch1.x - touch2.x);
-        const prevDy = Math.abs(touch1.y - touch2.y);
-        const curDx  = Math.abs(ta.clientX - tb.clientX);
-        const curDy  = Math.abs(ta.clientY - tb.clientY);
-        const midClientX = (ta.clientX + tb.clientX) / 2;
-        const midClientY = (ta.clientY + tb.clientY) / 2;
-        const anchorRatioX = (midClientX - rect.left) / rect.width;
-        const anchorRatioY = (midClientY - rect.top)  / rect.height;
-        const anchorMathX  = config.xMin + anchorRatioX * (config.xMax - config.xMin);
-        const anchorMathY  = config.yMax - anchorRatioY * (config.yMax - config.yMin);
+// 绑定实体键盘
+document.addEventListener('keydown', function(e) {
+    if (document.activeElement.tagName === 'INPUT') return;
+    const key = e.key;
+    if (key === 'ArrowLeft') { e.preventDefault(); moveCursor(-1); }
+    if (key === 'ArrowRight') { e.preventDefault(); moveCursor(1); }
+    if (key === 'Backspace') { e.preventDefault(); deleteLast(); }
+    if (key === 'Escape') { e.preventDefault(); clearAll(); }
+    if (key === 'Enter' || key === '=') { e.preventDefault(); calculate(); }
+    if (/[a-zA-Z0-9\.\+\-\*\/\(\),]/.test(key) && key.length === 1) { e.preventDefault(); append(key); }
+    if (key === '^') { e.preventDefault(); append('^{}'); }
+});
 
-        if (prevDx > 5 && curDx > 5) {
-            const scaleX = prevDx / curDx;
-            const xRange = (config.xMax - config.xMin) * scaleX;
-            config.xMin = anchorMathX - anchorRatioX * xRange;
-            config.xMax = config.xMin + xRange;
-        }
-        if (prevDy > 5 && curDy > 5) {
-            const scaleY = prevDy / curDy;
-            const yRange = (config.yMax - config.yMin) * scaleY;
-            config.yMax = anchorMathY + anchorRatioY * yRange;
-            config.yMin = config.yMax - yRange;
-        }
-
-        const prevMidX = (touch1.x + touch2.x) / 2;
-        const prevMidY = (touch1.y + touch2.y) / 2;
-        const panDx = (midClientX - prevMidX) / rect.width  * (config.xMax - config.xMin);
-        const panDy = (midClientY - prevMidY) / rect.height * (config.yMax - config.yMin);
-        config.xMin -= panDx; config.xMax -= panDx;
-        config.yMin += panDy; config.yMax += panDy;
-
-        touch1 = { id: ta.identifier, x: ta.clientX, y: ta.clientY };
-        touch2 = { id: tb.identifier, x: tb.clientX, y: tb.clientY };
-        syncRangeInputsFromConfig(); drawGraph();
-    }
-}, { passive: false });
-
-canvas.addEventListener('touchend', e => {
-    e.preventDefault();
-    if (e.touches.length === 0) { touch1 = null; touch2 = null; }
-    else if (e.touches.length === 1) {
-        touch1 = { id: e.touches[0].identifier, x: e.touches[0].clientX, y: e.touches[0].clientY };
-        touch2 = null;
-    }
-}, { passive: false });
-
-canvas.addEventListener('touchcancel', () => { touch1 = null; touch2 = null; });
-
-function syncRangeInputsFromConfig() {
-    document.getElementById('xMin').value = +config.xMin.toFixed(3);
-    document.getElementById('xMax').value = +config.xMax.toFixed(3);
-    document.getElementById('yMin').value = +config.yMin.toFixed(3);
-    document.getElementById('yMax').value = +config.yMax.toFixed(3);
-}
-
-function syncFromInput() {
-    config.xMin = parseFloat(document.getElementById('xMin').value);
-    config.xMax = parseFloat(document.getElementById('xMax').value);
-    config.yMin = parseFloat(document.getElementById('yMin').value);
-    config.yMax = parseFloat(document.getElementById('yMax').value);
-    drawGraph();
-}
 </script>
 </body>
 </html>
