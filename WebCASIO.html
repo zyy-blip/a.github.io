@@ -96,7 +96,7 @@
             text-align: center; white-space: nowrap; overflow: hidden;
             text-overflow: ellipsis; max-width: 100%; line-height: 1;
         }
-        #var-btns-row { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; flex-shrink: 0; }
+        #var-btns-row { display: grid; grid-template-columns: repeat(6, 2fr); gap: 6px; flex-shrink: 0; }
         .btn-var-sm {
             height: 26px; border: 1px solid #e0e6ed; border-radius: 8px;
             background: #fff; cursor: pointer; transition: all 0.1s;
@@ -171,12 +171,9 @@
         <div class="var-card active" id="var-row-a" onclick="selectVar('a')"><div class="var-name-cell" id="vname-a"></div><div class="var-val-cell" id="vval-a">0</div></div>
         <div class="var-card" id="var-row-b" onclick="selectVar('b')"><div class="var-name-cell" id="vname-b"></div><div class="var-val-cell" id="vval-b">0</div></div>
         <div class="var-card" id="var-row-c" onclick="selectVar('c')"><div class="var-name-cell" id="vname-c"></div><div class="var-val-cell" id="vval-c">0</div></div>
-        <div class="var-card" id="var-row-x" onclick="selectVar('x')"><div class="var-name-cell" id="vname-x"></div><div class="var-val-cell" id="vval-x">未定义</div></div>
+        <div class="var-card" id="var-row-x" onclick="selectVar('x')"><div class="var-name-cell" id="vname-x"></div><div class="var-val-cell" id="vval-x">0</div></div>
         <div class="var-card" id="var-row-y" onclick="selectVar('y')"><div class="var-name-cell" id="vname-y"></div><div class="var-val-cell" id="vval-y">0</div></div>
         <div class="var-card" id="var-row-z" onclick="selectVar('z')"><div class="var-name-cell" id="vname-z"></div><div class="var-val-cell" id="vval-z">0</div></div>
-        <div class="var-card" id="var-row-alpha" onclick="selectVar('alpha')"><div class="var-name-cell" id="vname-alpha"></div><div class="var-val-cell" id="vval-alpha">0</div></div>
-        <div class="var-card" id="var-row-beta" onclick="selectVar('beta')"><div class="var-name-cell" id="vname-beta"></div><div class="var-val-cell" id="vval-beta">0</div></div>
-        <div class="var-card" id="var-row-theta" onclick="selectVar('theta')"><div class="var-name-cell" id="vname-theta"></div><div class="var-val-cell" id="vval-theta">0</div></div>
     </div>
 
     <div class="screen" id="main-screen">
@@ -222,7 +219,7 @@
         <div style="display:flex; gap:8px; flex-shrink:0; margin-top:4px;">
             <button class="nav-btn" style="flex:1;" onclick="addFitRow()">+ 添行</button>
             <button class="nav-btn" style="flex:1; border-color:var(--btn-danger); color:var(--btn-danger);" onclick="removeFitRow()">- 删行</button>
-            <button id="btn-log-fit" class="nav-btn" style="flex:1;" onclick="toggleLogFit()">取 log₁₀</button>
+            <button id="btn-log-fit" class="nav-btn" style="flex:1;" onclick="toggleLogFit()">取 Log₁₀</button>
         </div>
     </div>
 
@@ -261,9 +258,6 @@
         <button class="btn-var-sm" onclick="append('x')">x</button>
         <button class="btn-var-sm" onclick="append('y')">y</button>
         <button class="btn-var-sm" onclick="append('z')">z</button>
-        <button class="btn-var-sm" onclick="append('alpha')">α</button>
-        <button class="btn-var-sm" onclick="append('beta')">β</button>
-        <button class="btn-var-sm" onclick="append('theta')">θ</button>
     </div>
 
     <div class="keyboard" id="keyboard-area">
@@ -271,11 +265,11 @@
         <button class="btn-func" onclick="append('g(')">g(x)</button>
         <button onclick="append('int(')">∫</button>
         <button onclick="append('deriv(')">d/dx</button>
-        <button onclick="append('x')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span></button>
+        <button onclick="append('x')">x</button>
 
         <button onclick="append('sqrt(')">√</button>
-        <button onclick="append('^{2}')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span>²</button>
-        <button onclick="append('^{}')"><span style="font-family:var(--cm); font-style:italic; color:#7c5cbf;">x</span>ⁿ</button>
+        <button onclick="append('^{2}')">x²</button>
+        <button onclick="append('^{}')">xⁿ</button>
         <button onclick="append('log10(')">log</button>
         <button onclick="append('log(')">ln</button>
 
@@ -311,7 +305,7 @@
 
         <button onclick="append('0')">0</button>
         <button onclick="append('.')">.</button>
-        <button onclick="append('*10^{}')">EXP</button>
+        <button onclick="append('*10^{}')">×10ⁿ</button>
         <button onclick="append('Ans')">Ans</button>
         <button class="btn-calc" onclick="calculate()">=</button>
     </div>
@@ -332,10 +326,10 @@ let fitConfig = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
 let fitResult = { k: 0, b: 0, r: 0, valid: false, data: [] };
 let isLogFit = false;
 
-const VAR_KEYS   = ['a','b','c','x','y','z','alpha','beta','theta'];
-const VAR_LABELS = { a:'a', b:'b', c:'c', x:'x', y:'y', z:'z', alpha:'\\alpha', beta:'\\beta', theta:'\\theta' };
-const varExprs   = { a:'', b:'', c:'', x:'', y:'', z:'', alpha:'', beta:'', theta:'' };
-const varVals    = { a:0,  b:0,  c:0,  x:0,  y:0,  z:0,  alpha:0,  beta:0,  theta:0  };
+const VAR_KEYS   = ['a','b','c','x','y','z'];
+const VAR_LABELS = { a:'a', b:'b', c:'c', x:'x', y:'y', z:'z'};
+const varExprs   = { a:'', b:'', c:'', x:'', y:'', z:''};
+const varVals    = { a:0,  b:0,  c:0,  x:0,  y:0,  z:0};
 let activeVar    = 'a';
 
 const singleDisplay = document.getElementById('single-line-display');
@@ -514,19 +508,11 @@ function expressionToTexForDisplay(str) {
         result = preStr;
     }
 
-    // 后处理替换希腊字母与系统符号（确保各种情况下绝对成功）
-    result = result.replace(/\\mathrm\{alpha\}/g, '\\alpha')
-                   .replace(/\\mathrm\{beta\}/g,  '\\beta')
-                   .replace(/\\mathrm\{theta\}/g, '\\theta')
-                   .replace(/\balpha\b/g, '\\alpha')
-                   .replace(/\bbeta\b/g, '\\beta')
-                   .replace(/\btheta\b/g, '\\theta')
-                   .replace(/\bpi\b/g, '\\pi')
+    result = result.replace(/\pi/g, '\\pi')
                    .replace(/XboxX/g, '\\square')
                    .replace(/\^\{\\left\(-(.*?)\\right\)\}/g, '^{-$1}')
-                   .replace(/\bAns\b/g, '\\mathrm{Ans}');
-    return result;
-}
+                   .replace(/\bAns\b/g, '\\mathrm{Ans}')
+    return result;}
 
 function getDisplayTex(expr, mode) {
     let s = expr;
@@ -583,7 +569,7 @@ function deleteLast() {
         currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1); cursorPos -= 2; renderLatex(); return;
     }
 
-    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{'];
+    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{','pi'];
     let deletedLen = 1, isBracketBlock = false;
 
     for (let t of atomicTokens) {
