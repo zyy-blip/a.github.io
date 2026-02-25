@@ -268,7 +268,11 @@
         <button onclick="append('x')">x</button>
 
         <button onclick="append('sqrt(')">√</button>
-        <button onclick="append('^{2}')">x²</button>
+        <button onclick="append('frac(')" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5px; padding-top:2px;">
+            <div style="width:11px; height:11px; border:1.5px solid currentColor; box-sizing:border-box;"></div>
+            <div style="width:16px; height:2px; background-color:currentColor;"></div>
+            <div style="width:11px; height:11px; border:1.5px solid currentColor; box-sizing:border-box;"></div>
+        </button>
         <button onclick="append('^{}')">xⁿ</button>
         <button onclick="append('log10(')">log</button>
         <button onclick="append('log(')">ln</button>
@@ -391,7 +395,11 @@ function customDeriv(args, mathObj, scope) {
     return result;
 }
 customDeriv.rawArgs = true;
-math.import({ int: customInt, deriv: customDeriv }, { override: true });
+math.import({
+    int: customInt,
+    deriv: customDeriv,
+    frac: function(a, b) { return a / b; }
+}, { override: true });
 
 (function initVarsPanel() {
     VAR_KEYS.forEach(k => { katex.render(VAR_LABELS[k], document.getElementById('vname-' + k), { throwOnError:false }); });
@@ -499,16 +507,32 @@ function expressionToTexForDisplay(str) {
                         if (exp.startsWith('\\left(') && exp.endsWith('\\right)')) exp = exp.slice(6, -7);
                         return `${base}^{${exp}}`;
                     }
+                    if (node.isFunctionNode && node.fn.name === 'frac') {
+                        return `\\frac{${node.args[0].toTex(options)}}{${node.args[1].toTex(options)}}`;
+                    }
+                    if (node.isOperatorNode && node.op === '/') {
+                        return `${node.args[0].toTex(options)} \\div ${node.args[1].toTex(options)}`;
+                    }
+                    // 新增：强制 Math.js 在任何情况下都将乘号渲染为 \cdot
+                    if (node.isOperatorNode && node.op === '*') {
+                        return `${node.args[0].toTex(options)} \\cdot ${node.args[1].toTex(options)}`;
+                    }
                 }
             });
         } catch(e) {
-            result = preStr.replace(/\^-\s*([a-zA-Z0-9_.]+)/g, '^{-$1}').replace(/\^([a-zA-Z0-9_.]+)/g, '^{$1}').replace(/\*/g, '\\times ');
+            // 修改：将兜底渲染中的 \times 改为 \cdot，保持全程统一
+            result = preStr.replace(/\^-\s*([a-zA-Z0-9_.]+)/g, '^{-$1}')
+                           .replace(/\^([a-zA-Z0-9_.]+)/g, '^{$1}')
+                           .replace(/\*/g, '\\cdot ')
+                           .replace(/\//g, '\\div ');
         }
     } else {
         result = preStr;
     }
 
-    result = result.replace(/\pi/g, '\\pi')
+    // 修改：优化 pi 的正则，确保它只替换纯文本的 pi，不会错误地把 \pi 变成 \\pi 导致换行
+
+    result = result.replace(/pi/g, '\pi')
                    .replace(/XboxX/g, '\\square')
                    .replace(/\^\{\\left\(-(.*?)\\right\)\}/g, '^{-$1}')
                    .replace(/\bAns\b/g, '\\mathrm{Ans}')
@@ -547,6 +571,7 @@ function append(v) {
     else if (v === '*10^{}') { insertStr = '*10^{□}'; offset = 5; }
     else if (v === 'int(') { insertStr = 'int(□,□,□)'; offset = 4; }
     else if (v === 'deriv(') { insertStr = 'deriv(□,□)'; offset = 6; }
+    else if (v === 'frac(') { insertStr = 'frac(□,□)'; offset = 5; }
 
     if (currentExpression[cursorPos] === '□') {
         currentExpression = currentExpression.substring(0, cursorPos) + insertStr + currentExpression.substring(cursorPos + 1);
@@ -569,7 +594,7 @@ function deleteLast() {
         currentExpression = leftStr.substring(0, leftStr.length - 2) + rightStr.substring(1); cursorPos -= 2; renderLatex(); return;
     }
 
-    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{','pi'];
+    const atomicTokens = ['sin(', 'cos(', 'tan(', 'log10(', 'log(', 'sqrt(', 'Ans', 'int(', 'deriv(','frac(', 'f(', 'g(', 'alpha', 'beta', 'theta', '^{','pi'];
     let deletedLen = 1, isBracketBlock = false;
 
     for (let t of atomicTokens) {
