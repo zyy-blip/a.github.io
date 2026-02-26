@@ -153,6 +153,65 @@
             padding: 6px; font-family: var(--cm); font-size: 15px; background: #fdfdfd;
         }
         .fit-input-cell:focus { outline: none; border-color: var(--btn-primary); }
+        /* 拟合结果容器：垂直堆叠 */
+.fit-result-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+/* 表达式：独占一行 */
+#fit-eq-display {
+    width: 100%;
+    min-height: 52px;
+    background: #fff;
+    border: 1px solid #e0e6ed;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 17px;
+    padding: 5px;
+}
+
+/* 底部行：按钮与 r 并排 */
+.fit-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* r 变量格子样式 */
+.r-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1.5px solid #e0e6ed;
+    border-radius: 12px;
+    height: 50px;
+}
+.r-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+.r-value {
+    font-size: 13px;
+    color: #888; /* 灰体数值 */
+    font-weight: 700;
+}
+
+/* 拟合按钮高度微调，与r卡片对齐 */
+#btn-log-fit {
+    height: 50px;
+    margin: 0;
+    width: 100%;
+}
     </style>
 </head>
 <body>
@@ -217,29 +276,38 @@
         </div>
         <div id="fit-rows" style="display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto; padding-right:4px;"></div>
         <div style="display:flex; gap:8px; flex-shrink:0; margin-top:4px;">
-            <button class="nav-btn" style="flex:1;" onclick="addFitRow()">+ 添行</button>
-            <button class="nav-btn" style="flex:1; border-color:var(--btn-danger); color:var(--btn-danger);" onclick="removeFitRow()">- 删行</button>
-            <button id="btn-log-fit" class="nav-btn" style="flex:1;" onclick="toggleLogFit()">取 Log₁₀</button>
-        </div>
+    <button class="nav-btn" style="flex:1;" onclick="addFitRow()">+ 添行</button>
+    <button class="nav-btn" style="flex:1; border-color:var(--btn-danger); color:var(--btn-danger);" onclick="removeFitRow()">- 删行</button>
+    </div>
     </div>
 
     <div id="fit-graph-panel" class="graph-area" style="display:none;">
-        <div class="canvas-container" id="fit-canvas-wrap">
-            <canvas id="fitCanvas"></canvas>
-            <div id="fit-axis-y" class="axis-label" style="top:5px; left:10px;">y</div>
-            <div id="fit-axis-x" class="axis-label" style="bottom:5px; right:10px;">x</div>
-        </div>
-        <div class="boundary-grid">
-            <div class="boundary-item"><span>X Min</span><input type="number" id="fitXMin" value="-10" step="1" onchange="syncFitFromInput()"></div>
-            <div class="boundary-item"><span>X Max</span><input type="number" id="fitXMax" value="10"  step="1" onchange="syncFitFromInput()"></div>
-            <div class="boundary-item"><span>Y Min</span><input type="number" id="fitYMin" value="-6"  step="1" onchange="syncFitFromInput()"></div>
-            <div class="boundary-item"><span>Y Max</span><input type="number" id="fitYMax" value="6"   step="1" onchange="syncFitFromInput()"></div>
-        </div>
-        <div style="display:flex; gap:8px; flex-shrink:0;">
-            <div id="fit-eq-display" style="flex:2; min-height:40px; display:flex; justify-content:center; align-items:center; background:white; border-radius:10px; border:1px solid #e0e6ed; padding:4px; font-size:16px; overflow-x:auto;"></div>
-            <div id="fit-r-display" style="flex:1; min-height:40px; display:flex; justify-content:center; align-items:center; background:white; border-radius:10px; border:1px solid #e0e6ed; padding:4px; font-size:16px;"></div>
+    <div class="canvas-container" id="fit-canvas-wrap">
+        <canvas id="fitCanvas"></canvas>
+        <div id="fit-axis-y" class="axis-label" style="top:5px; left:10px;">y</div>
+        <div id="fit-axis-x" class="axis-label" style="bottom:5px; right:10px;">x</div>
+    </div>
+
+    <div class="boundary-grid">
+        <div class="boundary-item"><span>X Min</span><input type="number" id="fitXMin" value="-10" step="1" onchange="syncFitFromInput()"></div>
+        <div class="boundary-item"><span>X Max</span><input type="number" id="fitXMax" value="10"  step="1" onchange="syncFitFromInput()"></div>
+        <div class="boundary-item"><span>Y Min</span><input type="number" id="fitYMin" value="-6"  step="1" onchange="syncFitFromInput()"></div>
+        <div class="boundary-item"><span>Y Max</span><input type="number" id="fitYMax" value="6"   step="1" onchange="syncFitFromInput()"></div>
+    </div>
+
+    <div class="fit-result-container">
+        <div id="fit-eq-display"></div>
+
+        <div class="fit-bottom-row">
+            <button id="btn-log-fit" class="nav-btn" style="margin:0; width:100%; height:50px;" onclick="toggleLogFit()">取 Log₁₀</button>
+
+            <div class="r-card">
+                <div class="r-label">r</div>
+                <div id="fit-r-val-display" class="r-value">---</div>
+            </div>
         </div>
     </div>
+</div>
 
     <div id="funcs-subnav" style="display:none; grid-template-columns:1fr 1fr; gap:6px; flex-shrink:0;">
         <button class="nav-btn active" id="func-target-f" onclick="setFuncTarget('f')">编辑 f(x)</button>
@@ -325,7 +393,7 @@ let config = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
 let isTraceMode = false;
 
 // 拟合数据系统
-let fitData = [{x: 1, y: 1}, {x: 2, y: 3}, {x: 3, y: 5}];
+let fitData = [{x: '', y: ''}, {x: '', y: ''}, {x: '', y: ''}];
 let fitConfig = { xMin:-10, xMax:10, yMin:-6, yMax:6 };
 let fitResult = { k: 0, b: 0, r: 0, valid: false, data: [] };
 let isLogFit = false;
@@ -657,80 +725,127 @@ function calculate() {
 // ─────────────────────────────────────────────────────────
 // 对数回归拟合系统
 // ─────────────────────────────────────────────────────────
+
 function renderFitRows() {
-    const container = document.getElementById('fit-rows'); container.innerHTML = '';
+    const container = document.getElementById('fit-rows');
+    container.innerHTML = '';
     fitData.forEach((row, idx) => {
         const div = document.createElement('div');
-        div.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;';
+        div.style.cssText = 'display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;';
+        // 关键：判断是否为空，为空则传空字符串
+        const xVal = (row.x === '' || row.x === null) ? '' : row.x;
+        const yVal = (row.y === '' || row.y === null) ? '' : row.y;
         div.innerHTML = `
-            <input type="number" step="any" value="${row.x}" class="fit-input-cell" onchange="updateFitData(${idx}, 'x', this.value)">
-            <input type="number" step="any" value="${row.y}" class="fit-input-cell" onchange="updateFitData(${idx}, 'y', this.value)">
+            <input type="text" inputmode="decimal" value="${xVal}" placeholder="" class="fit-input-cell" onchange="updateFitData(${idx}, 'x', this.value)">
+            <input type="text" inputmode="decimal" value="${yVal}" placeholder="" class="fit-input-cell" onchange="updateFitData(${idx}, 'y', this.value)">
         `;
         container.appendChild(div);
     });
 }
-function updateFitData(idx, key, val) { fitData[idx][key] = parseFloat(val) || 0; }
-function addFitRow() { fitData.push({x: 0, y: 0}); renderFitRows(); const rows = document.getElementById('fit-rows'); rows.scrollTop = rows.scrollHeight; }
+
+function updateFitData(idx, key, val) {
+    // 允许存储为字符串，计算时再转换
+    fitData[idx][key] = val.trim();
+    updateFitCalculation();
+}
+
+function addFitRow() {
+    fitData.push({x: '', y: ''});
+    renderFitRows();
+    // 滚动到底部
+    const rows = document.getElementById('fit-rows');
+    rows.scrollTop = rows.scrollHeight;
+    updateFitCalculation(); // 更新状态
+}
 function removeFitRow() { if (fitData.length > 2) { fitData.pop(); renderFitRows(); } }
 
 function toggleLogFit() {
     isLogFit = !isLogFit;
     const btn = document.getElementById('btn-log-fit');
-    if(isLogFit) {
-        btn.classList.add('active'); btn.innerHTML = '取消 log₁₀';
-        document.getElementById('fit-axis-y').innerText = 'log y';
-        document.getElementById('fit-axis-x').innerText = 'log x';
+    // 切换按钮样式
+    if (isLogFit) {
+        btn.style.background = "var(--btn-primary)";
+        btn.style.color = "#fff";
     } else {
-        btn.classList.remove('active'); btn.innerHTML = '取 log₁₀';
-        document.getElementById('fit-axis-y').innerText = 'y';
-        document.getElementById('fit-axis-x').innerText = 'x';
+        btn.style.background = "";
+        btn.style.color = "";
     }
-    if (state.mode === 'fit' && state.fitTarget === 'graph') { updateFitCalculation(); drawFitGraph(); }
+    updateFitCalculation(); // 重新计算并绘图
 }
 
 function updateFitCalculation() {
-    let validData = [];
-    for (let p of fitData) {
-        let x = p.x, y = p.y;
-        if (isLogFit) {
-            if (x <= 0 || y <= 0) continue;
-            x = Math.log10(x); y = Math.log10(y);
+    let validPoints = [];
+    fitData.forEach(p => {
+        let vx = parseFloat(p.x);
+        let vy = parseFloat(p.y);
+        // 严格检查：只有当两个都是有效数字时才计入
+        if (!isNaN(vx) && !isNaN(vy)) {
+            let x = vx, y = vy;
+            if (isLogFit) {
+                if (x > 0 && y > 0) {
+                    x = Math.log10(x);
+                    y = Math.log10(y);
+                    validPoints.push({x, y});
+                }
+            } else {
+                validPoints.push({x, y});
+            }
         }
-        validData.push({x, y});
-    }
+    });
 
-    const n = validData.length;
+    // 无论数据够不够，先更新 fitResult.data 用于画散点
+    fitResult.data = validPoints;
+
     const eqDiv = document.getElementById('fit-eq-display');
-    const rDiv = document.getElementById('fit-r-display');
+    const rValSpan = document.getElementById('fit-r-val-display');
 
-    if (n < 2) {
+    if (validPoints.length < 2) {
         fitResult.valid = false;
-        eqDiv.innerText = isLogFit ? '数据含≤0' : '数据不足';
-        rDiv.innerText = '-';
+        eqDiv.innerHTML = `<span style="color:#888; font-size:14px;">需2组有效数据</span>`;
+        rValSpan.innerText = "---";
+        drawFitGraph();
         return;
     }
 
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-    validData.forEach(p => { sumX+=p.x; sumY+=p.y; sumXY+=p.x*p.y; sumX2+=p.x*p.x; sumY2+=p.y*p.y; });
-    const denom = n * sumX2 - sumX * sumX;
+    // 最小二乘法
+    let n = validPoints.length;
+    let sX=0, sY=0, sXY=0, sX2=0, sY2=0;
+    validPoints.forEach(p => {
+        sX+=p.x; sY+=p.y; sXY+=p.x*p.y; sX2+=p.x*p.x; sY2+=p.y*p.y;
+    });
 
-    if (Math.abs(denom) < 1e-10) {
-        fitResult.valid = false; eqDiv.innerText = '无法拟合'; rDiv.innerText = '-';
+    let den = n * sX2 - sX * sX;
+    if (Math.abs(den) < 1e-15) {
+        fitResult.valid = false;
+        eqDiv.innerText = "无法拟合(X全部相同)";
     } else {
-        fitResult.k = (n * sumXY - sumX * sumY) / denom;
-        fitResult.b = (sumY - fitResult.k * sumX) / n;
-        const denR = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-        fitResult.r = denR === 0 ? 0 : (n * sumXY - sumX * sumY) / denR;
-        fitResult.valid = true; fitResult.data = validData;
-    }
+        fitResult.k = (n * sXY - sX * sY) / den;
+        fitResult.b = (sY - fitResult.k * sX) / n;
+        let rDen = Math.sqrt((n * sX2 - sX * sX) * (n * sY2 - sY * sY));
+        fitResult.r = rDen === 0 ? 0 : (n * sXY - sX * sY) / rDen;
+        fitResult.valid = true;
 
-    if (fitResult.valid) {
-        const kStr = parseFloat(fitResult.k.toFixed(4)), bStr = parseFloat(fitResult.b.toFixed(4)), rStr = parseFloat(fitResult.r.toFixed(4));
-        let eq = isLogFit ? `\\log y = ${kStr}\\log x` : `y = ${kStr}x`;
-        if (bStr > 0) eq += ` + ${bStr}`; else if (bStr < 0) eq += ` - ${Math.abs(bStr)}`;
-        katex.render(eq, eqDiv, { throwOnError: false });
-        katex.render(`r = ${rStr}`, rDiv, { throwOnError: false });
+        // 渲染 KaTeX
+        let kStr = parseFloat(fitResult.k.toFixed(4));
+        let bStr = parseFloat(fitResult.b.toFixed(4));
+        let latex = isLogFit ? `\\lg y = ${kStr}\\lg x` : `y = ${kStr}x`;
+        if (bStr > 0) latex += ` + ${bStr}`;
+        else if (bStr < 0) latex += ` - ${Math.abs(bStr)}`;
+        katex.render(latex, eqDiv, { throwOnError: false });
+
+        // r 精度逻辑
+        let r = fitResult.r;
+        let absR = Math.abs(r);
+        if (absR > 0.9 && absR < 1) {
+            let decimals = absR.toString().split('.')[1] || "";
+            let nineCount = 0;
+            while(decimals[nineCount] === '9') nineCount++;
+            rValSpan.innerText = r.toFixed(nineCount + 2);
+        } else {
+            rValSpan.innerText = r.toFixed(4);
+        }
     }
+    drawFitGraph();
 }
 
 function setFitTarget(t) {
@@ -895,13 +1010,45 @@ function drawTracker(px,py) {
 function initFitCanvas() { const wrap=document.getElementById('fit-canvas-wrap'), dpr=window.devicePixelRatio||1; fitCanvas.width=wrap.clientWidth*dpr; fitCanvas.height=wrap.clientHeight*dpr; fitCtx.setTransform(dpr,0,0,dpr,0,0); }
 function makeFitMappers() { const dpr=window.devicePixelRatio||1, w=fitCanvas.width/dpr, h=fitCanvas.height/dpr; return { w, h, mX: x=>((x-fitConfig.xMin)/(fitConfig.xMax-fitConfig.xMin))*w, mY: y=>h-((y-fitConfig.yMin)/(fitConfig.yMax-fitConfig.yMin))*h }; }
 function drawFitGraph() {
-    const {w,h,mX,mY}=makeFitMappers(); fitCtx.clearRect(0,0,w,h);
-    fitCtx.strokeStyle='#f0f0f0';fitCtx.lineWidth=1;fitCtx.beginPath(); for(let x=Math.floor(fitConfig.xMin);x<=fitConfig.xMax;x++){fitCtx.moveTo(mX(x),0);fitCtx.lineTo(mX(x),h);} for(let y=Math.floor(fitConfig.yMin);y<=fitConfig.yMax;y++){fitCtx.moveTo(0,mY(y));fitCtx.lineTo(w,mY(y));} fitCtx.stroke();
-    fitCtx.strokeStyle='#ccc';fitCtx.lineWidth=1.5;fitCtx.beginPath(); fitCtx.moveTo(0,mY(0));fitCtx.lineTo(w,mY(0)); fitCtx.moveTo(mX(0),0);fitCtx.lineTo(mX(0),h); fitCtx.stroke();
+    const {w, h, mX, mY} = makeFitMappers();
+    fitCtx.clearRect(0, 0, w, h);
+
+    // 绘制背景网格和轴线 (保持原样)
+    fitCtx.strokeStyle = '#f0f0f0';
+    fitCtx.lineWidth = 1;
+    fitCtx.beginPath();
+    for (let x = Math.floor(fitConfig.xMin); x <= fitConfig.xMax; x++) { fitCtx.moveTo(mX(x), 0); fitCtx.lineTo(mX(x), h); }
+    for (let y = Math.floor(fitConfig.yMin); y <= fitConfig.yMax; y++) { fitCtx.moveTo(0, mY(y)); fitCtx.lineTo(w, mY(y)); }
+    fitCtx.stroke();
+
+    fitCtx.strokeStyle = '#ccc';
+    fitCtx.lineWidth = 1.5;
+    fitCtx.beginPath();
+    fitCtx.moveTo(0, mY(0)); fitCtx.lineTo(w, mY(0));
+    fitCtx.moveTo(mX(0), 0); fitCtx.lineTo(mX(0), h);
+    fitCtx.stroke();
+
+    if (fitResult.data && fitResult.data.length > 0) {
+        fitCtx.fillStyle = '#0984e3';
+        fitResult.data.forEach(p => {
+            fitCtx.beginPath();
+            fitCtx.arc(mX(p.x), mY(p.y), 4, 0, Math.PI*2);
+            fitCtx.fill();
+        });
+    }
+
+    // 3. 画拟合直线
     if (fitResult.valid) {
-        fitCtx.beginPath(); fitCtx.strokeStyle='#f56c6c'; fitCtx.lineWidth=2.5; const x1 = fitConfig.xMin, y1 = fitResult.k * x1 + fitResult.b, x2 = fitConfig.xMax, y2 = fitResult.k * x2 + fitResult.b;
-        fitCtx.moveTo(mX(x1), mY(y1)); fitCtx.lineTo(mX(x2), mY(y2)); fitCtx.stroke();
-        fitCtx.fillStyle = '#0984e3'; fitResult.data.forEach(p => { const cx = mX(p.x), cy = mY(p.y); if(cx >= -10 && cx <= w+10 && cy >= -10 && cy <= h+10) { fitCtx.beginPath(); fitCtx.arc(cx, cy, 4, 0, Math.PI*2); fitCtx.fill(); } });
+        fitCtx.strokeStyle = '#f56c6c';
+        fitCtx.lineWidth = 2;
+        fitCtx.beginPath();
+        let x1 = fitConfig.xMin;
+        let y1 = fitResult.k * x1 + fitResult.b;
+        let x2 = fitConfig.xMax;
+        let y2 = fitResult.k * x2 + fitResult.b;
+        fitCtx.moveTo(mX(x1), mY(y1));
+        fitCtx.lineTo(mX(x2), mY(y2));
+        fitCtx.stroke();
     }
 }
 
